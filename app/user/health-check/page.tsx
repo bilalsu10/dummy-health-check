@@ -1,3 +1,4 @@
+//app/dashboard/health-check/page.tsx
 import Link from "next/link";
 import { getRiskSummary } from "@/lib/healthSource";
 const summary = getRiskSummary();
@@ -10,7 +11,7 @@ export default function HealthCheckHub() {
       <header className="border-b bg-white">
         <div className="mx-auto max-w-6xl px-6 py-6">
           <div className="text-xs text-gray-500">
-            <Link href="/dashboard" className="hover:underline">Home</Link> / Health Check
+            <Link href="/user/home" className="hover:underline">Home</Link> / Health Check
           </div>
           <h1 className="mt-1 text-2xl font-semibold">Health Check</h1>
           <p className="mt-1 text-sm text-gray-600">Hub page (placeholder)</p>

@@ -1,8 +1,10 @@
+//app/dashboard/page.tsx
+
 import Link from "next/link";
 import { getRiskSummary } from "@/lib/healthSource";
 
 const tiles = [
-  { href: "/dashboard/health-check", title: "Health Check", desc: "Reports, risks, trends" },
+  { href: "/user/health-check", title: "Health Check", desc: "Reports, risks, trends" },
   { href: "/dashboard/treatment", title: "Treatment History", desc: "Hospital / clinic overview" },
   { href: "/dashboard/fit-mission", title: "Fit Mission", desc: "Before/after and points" },
   { href: "/dashboard/mental-health", title: "Mental Health", desc: "Mental health overview" },
