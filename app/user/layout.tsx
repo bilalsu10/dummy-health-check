@@ -1,12 +1,15 @@
-// ตัวอย่าง layout.tsx (ใช้ได้กับ public / user / admin)
-export default function Layout({
+// app/(public)/layout.tsx
+import UserHeader from "@/components/layout/UserHeader";
+
+export default function UserLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
     <>
-      {children}
+      <UserHeader />
+      <main>{children}</main>
     </>
   );
 }

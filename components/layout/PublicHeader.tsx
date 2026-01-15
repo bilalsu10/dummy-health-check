@@ -5,30 +5,34 @@ import { Button } from "@/components/ui/button";
 
 export default function PublicHeader() {
   return (
-    <header className="border-b bg-white">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        {/* Left: Logo + System name */}
-        <div className="flex items-center gap-3">
+    <header className="border-b bg-white shadow-md">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+        <div className="flex items-center gap-4">
           <Image
             src="/logo/logo.svg"
             alt="SCG"
-            width={36}
-            height={36}
+            width={200}
+            height={200}
+            className="h-12 w-auto"
             priority
           />
-          <span className="text-sm font-semibold tracking-wide text-gray-900">
-            Employee Health Check System
+
+          <span className="uppercase tracking-wide text-sm font-semibold tracking-wide text-gray-900">
+            Health Check System
           </span>
+
         </div>
 
-        {/* Right: Login */}
         <Button
           asChild
           variant="outline"
-          className="border-gray-300 text-gray-900 hover:border-red-600 hover:text-red-600"
+          size="lg"
+          className="text-base font-semibold border-gray-300 text-gray-800 transition-all duration-200 
+          hover:border-red-600 hover:text-red-700 hover:bg-red-50 hover:shadow-md"
         >
           <Link href="/login">Login</Link>
         </Button>
+
       </div>
     </header>
   );
