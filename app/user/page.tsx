@@ -1,7 +1,7 @@
 //app/dashboard/page.tsx
 
 import Link from "next/link";
-import { getRiskSummary } from "@/lib/healthSource";
+
 
 const tiles = [
   { href: "/user/health-check", title: "Health Check", desc: "Reports, risks, trends" },
@@ -20,15 +20,6 @@ const tiles = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-6">
-          <h1 className="text-2xl font-semibold tracking-tight">Home</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Select a section to view dashboards and reports.
-          </p>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tiles.map((t) => (
