@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { getRiskSummary } from "@/lib/healthSource";
-const summary = getRiskSummary();
 
 
 
