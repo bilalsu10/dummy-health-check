@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Thai } from "next/font/google";
 import "./globals.css";
+import Footer from "@/components/layout/Footer";
 
 const ibmPlexThai = IBM_Plex_Sans_Thai({
   subsets: ["thai", "latin"],
@@ -22,11 +23,16 @@ export default function RootLayout({
   return (
     <html lang="th">
       <body
-        className={`${ibmPlexThai.variable} antialiased`}
+        className={`${ibmPlexThai.variable} antialiased flex min-h-screen flex-col`}
         style={{ fontFamily: "var(--font-ibm-plex-thai), sans-serif" }}
       >
-        {children}
+        <main className="flex-1">
+          {children}
+        </main>
+
+        <Footer />
       </body>
     </html>
   );
 }
+
