@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Line,
   LineChart,
@@ -37,12 +37,20 @@ const parseHearingValues = (value: unknown) => {
     .filter((number) => Number.isFinite(number));
 };
 
+const YEAR_ORDER = ["2566", "2567", "2568"];
+
+const resolveHearingStatus = (values: number[]) => {
+  if (!values.length) return "unknown";
+  const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+  return avg > 25 ? "abnormal" : "normal";
+};
+
 export default function EyesReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedEmpId, setSelectedEmpId] = useState("");
-  const [selectedYear, setSelectedYear] = useState("2568");
+  const [selectedYear] = useState("2568");
   const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
 
   useEffect(() => {
@@ -141,13 +149,40 @@ export default function EyesReport() {
     };
   }, [rowsByYear, selectedEmpId, selectedPerson]);
 
+  const individualCategoryTrends = useMemo(() => {
+    if (!selectedEmpId) return [];
+    return [
+      { label: "Left ear low (500–3000)", indices: [7, 8, 9, 10] },
+      { label: "Left ear high (4000–8000)", indices: [11, 12, 13] },
+      { label: "Right ear low (500–3000)", indices: [0, 1, 2, 3] },
+      { label: "Right ear high (4000–8000)", indices: [4, 5, 6] },
+    ].map((category) => {
+      const data = YEAR_ORDER.map((year) => {
+        const row =
+          rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
+          null;
+        const values = parseHearingValues(row?.["ตรวจสมรรถภาพการได้ยิน"]);
+        const selected = category.indices.map((idx) => values[idx]).filter((val) => val != null);
+        const status = resolveHearingStatus(selected as number[]);
+        return {
+          year,
+          normal: status === "normal" ? 1 : null,
+          abnormal: status === "abnormal" ? 1 : null,
+        };
+      });
+      return { label: category.label, data };
+    });
+  }, [rowsByYear, selectedEmpId]);
+
   const makeDot = (baseColor: string) => {
-    return ({ cx, cy, payload, dataKey }: { cx?: number; cy?: number; payload?: { [key: string]: unknown }; dataKey?: string }) => {
+    return (props: any): React.ReactNode => {
+      const { cx, cy, payload, dataKey } = props;
       const raw = payload && dataKey ? payload[dataKey] : null;
       const value = Number(raw ?? 0);
       const isHigh = value > 25;
       return (
         <circle
+          key={`dot-${cx}-${cy}`}
           cx={cx}
           cy={cy}
           r={isHigh ? 7 : 4}
@@ -197,16 +232,7 @@ export default function EyesReport() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-6">
-          <div className="text-xs text-gray-500">
-            <Link href="/dashboard">Home</Link> /{" "}
-            <Link href="/dashboard/health-check">Health Check</Link> /{" "}
-            <Link href="/dashboard/health-check/report-1-1-risk">Risk</Link> / Ears
-          </div>
-          <h1 className="mt-1 text-2xl font-semibold">Hearing Assessment</h1>
-        </div>
-      </header>
+
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
         <section className="rounded-2xl border bg-white p-5">
@@ -214,21 +240,6 @@ export default function EyesReport() {
             Find employee details
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
-            <label className="flex flex-col gap-2 text-sm text-gray-600 md:max-w-[160px]">
-              Year
-              <select
-                className="h-11 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
-                value={selectedYear}
-                onChange={(event) => {
-                  setSelectedYear(event.target.value);
-                  setSelectedEmpId("");
-                }}
-              >
-                <option value="2568">2568</option>
-                <option value="2567">2567</option>
-                <option value="2566">2566</option>
-              </select>
-            </label>
             <label className="flex flex-col gap-2 text-sm text-gray-600 md:max-w-sm md:flex-1">
               SCG EmpID
               <select
@@ -416,6 +427,41 @@ export default function EyesReport() {
                         )}
                       </div>
                     </div>
+                  </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {individualCategoryTrends.map((chart) => (
+                      <div key={chart.label} className="rounded-xl border border-gray-200 bg-white p-4">
+                        <div className="text-xs uppercase text-gray-500">{chart.label}</div>
+                        <div className="mt-3 h-40">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chart.data}>
+                              <XAxis dataKey="year" />
+                              <YAxis
+                                allowDecimals={false}
+                                ticks={[0, 1]}
+                                domain={[0, 1]}
+                              />
+                              <Tooltip />
+                              <Legend />
+                              <Line
+                                type="monotone"
+                                dataKey="normal"
+                                name="Normal"
+                                stroke="#16A34A"
+                                strokeWidth={2}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="abnormal"
+                                name="Abnormal"
+                                stroke="#DC2626"
+                                strokeWidth={2}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}

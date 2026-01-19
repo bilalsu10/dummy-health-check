@@ -216,15 +216,7 @@ export default function RiskReport() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-6">
-          <div className="text-xs text-gray-500">
-            <Link href="/dashboard">Home</Link> /{" "}
-            <Link href="/dashboard/health-check">Health Check</Link> / Risk
-          </div>
-          <h1 className="mt-1 text-2xl font-semibold">Health Risk Report</h1>
-        </div>
-      </header>
+
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -297,7 +289,21 @@ export default function RiskReport() {
                     <span key={item}>
                       {item === "ตรวจสมรรถภาพการได้ยิน" ? (
                         <Link
-                          href="/dashboard/health-check/report-1-1-risk/ears"
+                          href="/user/health-check/health-risk/ear"
+                          className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-white"
+                        >
+                          {item}
+                        </Link>
+                      ) : item === "ตรวจสายตาทางอาชีวอนามัย" ? (
+                        <Link
+                          href="/user/health-check/health-risk/eyes"
+                          className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-white"
+                        >
+                          {item}
+                        </Link>
+                      ) : item === "ตรวจการมองเห็นระยะไกล" ? (
+                        <Link
+                          href="/user/health-check/health-risk/eyes-va"
                           className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-white"
                         >
                           {item}
