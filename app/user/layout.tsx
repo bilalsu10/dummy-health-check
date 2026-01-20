@@ -1,5 +1,6 @@
 // app/user/layout.tsx
 import UserHeader from "@/components/layout/UserHeader";
+import BackButton from "@/components/navigation/BackButton";
 
 export default function UserLayout({
   children,
@@ -9,7 +10,10 @@ export default function UserLayout({
   return (
     <>
       <UserHeader />
-      <main>{children}</main>
+      <div className="relative mx-auto max-w-6xl px-6 h-0">
+        <BackButton />
+      </div>
+      <main >{children}</main>
     </>
   );
-}
+} 
