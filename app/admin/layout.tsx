@@ -1,4 +1,4 @@
-// app/(public)/layout.tsx
+// app/admin/layout.tsx
 import AdminHeader from "@/components/layout/AdminHeader";
 
 export default function AdminLayout({
