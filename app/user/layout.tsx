@@ -1,4 +1,4 @@
-// app/(public)/layout.tsx
+// app/user/layout.tsx
 import UserHeader from "@/components/layout/UserHeader";
 
 export default function UserLayout({
