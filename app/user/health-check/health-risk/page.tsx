@@ -294,6 +294,13 @@ export default function RiskReport() {
                         >
                           {item}
                         </Link>
+                      ) : item === "ดัชนีมวลกาย" ? (
+                        <Link
+                          href="/user/health-check/health-risk/bmi"
+                          className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-white"
+                        >
+                          {item}
+                        </Link>
                       ) : item === "ตรวจสายตาทางอาชีวอนามัย" ? (
                         <Link
                           href="/user/health-check/health-risk/eyes"

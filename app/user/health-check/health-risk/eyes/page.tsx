@@ -41,6 +41,7 @@ const VISION_HEADERS = [
 ];
 
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
+const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
 
 const parseVisionItems = (value: unknown) => {
   const raw = normalizeValue(value);
@@ -234,7 +235,7 @@ export default function EyesReport() {
     <div className="min-h-screen bg-gray-50">
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
         <section className="rounded-2xl border bg-white p-5">
-          <div className="mb-3 text-sm font-semibold text-gray-700">
+          <div className="mb-3 text-lg font-semibold text-gray-800">
             Find employee details
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
@@ -253,84 +254,42 @@ export default function EyesReport() {
                 ))}
               </select>
             </label>
-            {selectedPerson && (
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 md:flex-1">
-                <div className="font-semibold text-gray-900">
-                  {normalizeValue(selectedPerson.Name) || "Unknown"}
-                </div>
-                <div className="text-xs text-gray-600">
-                  {normalizeValue(selectedPerson.Position)} ·{" "}
-                  {normalizeValue(selectedPerson.Department)}
-                </div>
-              </div>
-            )}
           </div>
           {error && <div className="mt-3 text-xs text-red-600">{error}</div>}
         </section>
 
         <section className="rounded-2xl border bg-white p-5">
-          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm font-semibold text-gray-700">
-              Vision summary by group
-            </div>
-            <label className="flex flex-col gap-2 text-xs text-gray-500 sm:flex-row sm:items-center">
-              Group by
-              <select
-                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
-                value={selectedGroupKey}
-                onChange={(event) => setSelectedGroupKey(event.target.value)}
-              >
-                {GROUP_FIELDS.map((field) => (
-                  <option key={field.key} value={field.key}>
-                    {field.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="grid gap-4">
-            {groupTotals.map((chart) => (
-              <div key={chart.label} className="rounded-xl border border-gray-200 bg-white p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs uppercase text-gray-500">{chart.label}</div>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
-                      Normal: {chart.totals.normal}
-                    </span>
-                    <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700">
-                      Abnormal: {chart.totals.abnormal}
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-3 h-52">
-                  {chart.data.length ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chart.data}>
-                        <XAxis dataKey="name" />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="normal" name="Normal" fill="#16A34A" stackId="status" />
-                        <Bar dataKey="abnormal" name="Abnormal" fill="#DC2626" stackId="status" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-gray-500">
-                      No grouped data
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border bg-white p-6">
-          <div className="text-sm font-semibold text-gray-700">Vision Results</div>
+          <div className="mb-4 text-lg font-semibold text-gray-800">ส่วนบุคคล</div>
           {loading ? (
             <div className="mt-4 text-sm text-gray-500">Loading…</div>
           ) : selectedPerson ? (
-            <div className="mt-4 space-y-4 text-sm text-gray-700">
+            <div className="grid gap-4 text-sm text-gray-700">
+              <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-lg font-semibold text-indigo-700">
+                    {getInitial(normalizeValue(selectedPerson.Name)) || "?"}
+                  </div>
+                  <div>
+                    <div className="text-xs text-indigo-500">พนักงานที่เลือก</div>
+                    <div className="text-base font-semibold text-gray-900">
+                      {normalizeValue(selectedPerson.Name) || "Unknown"}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {normalizeValue(selectedPerson.Position)} ·{" "}
+                      {normalizeValue(selectedPerson.Department)}
+                    </div>
+                    {selectedEmpId && (
+                      <div className="mt-2 inline-flex rounded-full border border-indigo-200 bg-white px-3 py-1 text-xs text-indigo-600">
+                        {selectedEmpId}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="text-lg font-semibold text-gray-800">Vision Results</div>
+                <div className="mt-4 space-y-4 text-sm text-gray-700">
               {visionStatusItems.length ? (
                 <div className="space-y-4">
                   <div className="overflow-x-auto">
@@ -582,10 +541,72 @@ export default function EyesReport() {
                   })}
                 </div>
               ) : null}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="mt-4 text-sm text-gray-500">Select an employee to see details.</div>
           )}
+        </section>
+
+        <section className="rounded-2xl border bg-white p-5">
+          <div className="mb-4 text-lg font-semibold text-gray-800">ภาพรวม</div>
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-lg font-semibold text-gray-800">
+                Vision summary by group
+              </div>
+              <label className="flex flex-col gap-2 text-xs text-gray-500 sm:flex-row sm:items-center">
+                Group by
+                <select
+                  className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                  value={selectedGroupKey}
+                  onChange={(event) => setSelectedGroupKey(event.target.value)}
+                >
+                  {GROUP_FIELDS.map((field) => (
+                    <option key={field.key} value={field.key}>
+                      {field.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="grid gap-4">
+              {groupTotals.map((chart) => (
+                <div key={chart.label} className="rounded-xl border border-gray-200 bg-white p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-xs uppercase text-gray-500">{chart.label}</div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
+                        Normal: {chart.totals.normal}
+                      </span>
+                      <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700">
+                        Abnormal: {chart.totals.abnormal}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 h-52">
+                    {chart.data.length ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chart.data}>
+                          <XAxis dataKey="name" />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="normal" name="Normal" fill="#16A34A" stackId="status" />
+                          <Bar dataKey="abnormal" name="Abnormal" fill="#DC2626" stackId="status" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                        No grouped data
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
       </main>
     </div>
