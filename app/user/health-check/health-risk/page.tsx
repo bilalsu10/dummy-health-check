@@ -85,6 +85,13 @@ const URINE_KEYS = [
 
 const TOXIN_BLOOD_KEYS = ["ตรวจสารตะกั่วในเลือด", "ตรวจสารแคดเมียมในเลือด"];
 
+const ITEM_LINKS: Record<string, string> = {
+  "ตรวจสมรรถภาพการได้ยิน": "/user/health-check/health-risk/ear",
+  "ตรวจสายตาทางอาชีวอนามัย": "/user/health-check/health-risk/eyes",
+  "ตรวจการมองเห็นระยะไกล": "/user/health-check/health-risk/eyes-va",
+};
+
+
 const GROUPS = [
   { title: "Vitals", items: VITALS_KEYS },
   { title: "Vision & Hearing", items: VISION_HEARING_KEYS },
@@ -167,6 +174,7 @@ export default function RiskReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -214,25 +222,28 @@ export default function RiskReport() {
     return [...GROUPS, { title: "Other", items: leftovers }];
   }, [rows]);
 
+  const [activeGroup, setActiveGroup] = useState<string>("Vitals");
+
+  const visibleGroups =
+    activeGroup === "All"
+      ? groupedItems
+      : groupedItems.filter((group) => group.title === activeGroup);
+
+
+
   return (
     <div className="min-h-screen bg-gray-50">
-
-
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
+      <main className="mx-auto flex max-w-6xl flex-col gap-6 pt-18 pb-8">
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-2xl border bg-white p-5">
-            <div className="text-xs uppercase text-gray-500">Employees</div>
+            <div className="text-base font-semibold uppercase">Employees</div>
             <div className="mt-2 text-3xl font-semibold">
               {loading ? "Loading…" : totals.employees.toLocaleString("en-US")}
             </div>
-            {error ? (
-              <div className="mt-2 text-xs text-red-600">{error}</div>
-            ) : (
-              <div className="mt-2 text-xs text-gray-500">Source: final_2568.json</div>
-            )}
+
           </div>
           <div className="rounded-2xl border bg-white p-5">
-            <div className="text-xs uppercase text-gray-500">BMI categories</div>
+            <div className="text-base font-semibold uppercase ">BMI categories</div>
             {loading ? (
               <div className="mt-2 text-sm text-gray-500">Loading…</div>
             ) : (
@@ -247,7 +258,7 @@ export default function RiskReport() {
             )}
           </div>
           <div className="rounded-2xl border bg-white p-5">
-            <div className="text-xs uppercase text-gray-500">Blood pressure</div>
+            <div className="text-base font-semibold uppercase ">Blood pressure</div>
             {loading ? (
               <div className="mt-2 text-sm text-gray-500">Loading…</div>
             ) : (
@@ -264,57 +275,63 @@ export default function RiskReport() {
         </section>
 
         <section className="rounded-2xl border bg-white p-5">
-          <div className="mb-4 text-sm font-semibold text-gray-700">Grouped data items</div>
+          <div className="mb-4 text-base font-semibold uppercase">Grouped data items</div>
           <div className="mb-4 flex flex-wrap gap-2">
             {groupedItems.map((group) => (
-              <a
+              <button
                 key={group.title}
-                href={`#${toGroupId(group.title)}`}
-                className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                onClick={() => setActiveGroup(group.title)}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold
+                  ${activeGroup === group.title
+                    ? "border-red-500 text-red-600 bg-red-50"
+                    : "border-gray-200 text-gray-700 bg-white hover:border-gray-300 hover:bg-gray-50"}
+                    `}
               >
                 {group.title}
-              </a>
+              </button>
+
             ))}
+            <button
+              onClick={() => setActiveGroup("All")}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold
+                ${activeGroup === "All"
+                  ? "border-red-500 text-red-600 bg-red-50"
+                  : "border-gray-200 text-gray-700 bg-white hover:border-gray-300 hover:bg-gray-50"}
+                  `}
+            >
+              All
+            </button>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {groupedItems.map((group) => (
+            {visibleGroups.map((group) => (
               <div
                 key={group.title}
                 id={toGroupId(group.title)}
-                className="scroll-mt-24 rounded-xl border border-gray-300 bg-white p-4 shadow-sm"
+                className="scroll-mt-24 rounded-2xl border border-gray-300 bg-white p-4 shadow-sm"
               >
                 <div className="text-xs uppercase tracking-wide text-gray-500">{group.title}</div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {group.items.map((item) => (
-                    <span key={item}>
-                      {item === "ตรวจสมรรถภาพการได้ยิน" ? (
-                        <Link
-                          href="/user/health-check/health-risk/ear"
-                          className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-white"
-                        >
-                          {item}
-                        </Link>
-                      ) : item === "ตรวจสายตาทางอาชีวอนามัย" ? (
-                        <Link
-                          href="/user/health-check/health-risk/eyes"
-                          className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-white"
-                        >
-                          {item}
-                        </Link>
-                      ) : item === "ตรวจการมองเห็นระยะไกล" ? (
-                        <Link
-                          href="/user/health-check/health-risk/eyes-va"
-                          className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-white"
-                        >
-                          {item}
-                        </Link>
-                      ) : (
-                        <span className="rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700">
-                          {item}
-                        </span>
-                      )}
-                    </span>
-                  ))}
+                  {group.items.map((item) => {
+                    const href = ITEM_LINKS[item];
+
+                    return (
+                      <span key={item}>
+                        {href ? (
+                          <Link
+                            href={href}
+                            className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-white"
+                          >
+                            {item}
+                          </Link>
+                        ) : (
+                          <span className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700">
+                            {item}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
+
                 </div>
               </div>
             ))}

@@ -18,9 +18,9 @@ const tiles = [
  
 
 export default function Home() {
-  return (
+  return (       
     <div className="min-h-screen bg-gray-50">
-      <main className="mx-auto max-w-6xl px6 pt-18 pb-8">
+      <main className="mx-auto max-w-6xl pt-18 pb-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tiles.map((t) => (
             <Link
