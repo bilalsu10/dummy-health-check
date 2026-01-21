@@ -4,7 +4,7 @@ import Link from "next/link";
 
 
 const tiles = [
-  { href: "/user/health-check", title: "Health Check", desc: "Reports, risks, trends" },
+  { href: "/admin/health-check", title: "Health Check", desc: "Reports, risks, trends" },
   { href: "/user/treatment", title: "Treatment History", desc: "Hospital / clinic overview" },
   { href: "/user/fit-mission", title: "Fit Mission", desc: "Before/after and points" },
   { href: "/user/mental-health", title: "Mental Health", desc: "Mental health overview" },

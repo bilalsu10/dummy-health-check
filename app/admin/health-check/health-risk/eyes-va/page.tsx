@@ -337,7 +337,7 @@ export default function EyesVaReport() {
         </section>
 
         <div className="text-xs text-gray-500">
-          <Link href="/user/health-check/health-risk" className="hover:underline">
+          <Link href="/admin/health-check/health-risk" className="hover:underline">
             Back to Health Risk
           </Link>
         </div>

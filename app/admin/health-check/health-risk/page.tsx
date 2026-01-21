@@ -86,10 +86,11 @@ const URINE_KEYS = [
 const TOXIN_BLOOD_KEYS = ["ตรวจสารตะกั่วในเลือด", "ตรวจสารแคดเมียมในเลือด"];
 
 const ITEM_LINKS: Record<string, string> = {
-  "ตรวจสมรรถภาพการได้ยิน": "/user/health-check/health-risk/ear",
-  "ดัชนีมวลกาย": "/user/health-check/health-risk/bmi",
-  "ตรวจสายตาทางอาชีวอนามัย": "/user/health-check/health-risk/eyes",
-  "ตรวจการมองเห็นระยะไกล": "/user/health-check/health-risk/eyes-va",
+  "ตรวจสมรรถภาพการได้ยิน": "/admin/health-check/health-risk/ear",
+  "ดัชนีมวลกาย": "/admin/health-check/health-risk/bmi",
+  "ความดันโลหิต": "/admin/health-check/health-risk/bp",
+  "ตรวจสายตาทางอาชีวอนามัย": "/admin/health-check/health-risk/eyes",
+  "ตรวจการมองเห็นระยะไกล": "/admin/health-check/health-risk/eyes-va",
 };
 
 

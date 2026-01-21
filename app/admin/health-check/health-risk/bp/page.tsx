@@ -16,7 +16,7 @@ import {
 
 type HealthRow = Record<string, unknown>;
 
-const BMI_KEY = "ดัชนีมวลกาย";
+const BP_KEY = "ความดันโลหิต";
 const GROUP_FIELDS = [
   { label: "Division", key: "Division" },
   { label: "Department", key: "Department" },
@@ -24,27 +24,42 @@ const GROUP_FIELDS = [
 ];
 
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
-
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
 
-const parseBmiValue = (value: unknown) => {
-  const raw = normalizeValue(value);
-  if (!raw) return null;
-  const [first] = raw.split(",");
-  const number = Number(first?.trim());
-  return Number.isFinite(number) ? number : null;
+const categorizeBp = (value: string) => {
+  if (value.includes("ต่ำ")) return "low";
+  if (value.includes("สูง")) return "high";
+  if (value.includes("ปกติ")) return "normal";
+  if (value.includes("ไม่ได้รับการตรวจ") || value.includes("ไม่รับการตรวจ") || value.includes("ไม่ตรวจ")) {
+    return "notTested";
+  }
+  return "other";
 };
 
-const categorizeBmi = (value: unknown) => {
-  const bmi = parseBmiValue(value);
-  if (bmi === null) return "notTested";
-  if (bmi < 18.5) return "underweight";
-  if (bmi < 23) return "normal";
-  if (bmi < 25) return "overweight";
-  return "obese";
+const bpCategoryLabel = (bucket: string) => {
+  switch (bucket) {
+    case "low":
+      return "ความดันต่ำ";
+    case "high":
+      return "ความดันสูง";
+    case "normal":
+      return "ปกติ";
+    case "notTested":
+      return "ไม่ได้รับการตรวจ";
+    default:
+      return "อื่นๆ";
+  }
 };
 
-export default function BmiReport() {
+const bpStatusValue = (value: string) => {
+  const bucket = categorizeBp(value);
+  if (bucket === "low") return 0.2;
+  if (bucket === "normal") return 0.6;
+  if (bucket === "high") return 1;
+  return null;
+};
+
+export default function BloodPressureReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,71 +127,47 @@ export default function BmiReport() {
     );
   }, [rowsByYear, selectedEmpId, selectedYear]);
 
-  const bmiTrend = useMemo(() => {
+  const selectedBp = useMemo(() => {
+    if (!selectedEmpId) return null;
+    const row =
+      rowsByYear["2568"]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
+      null;
+    if (!row) return null;
+    const raw = normalizeValue(row[BP_KEY]);
+    const bucket = categorizeBp(raw);
+    return { raw, bucket };
+  }, [rowsByYear, selectedEmpId]);
+
+  const bpTrend = useMemo(() => {
     if (!selectedEmpId) return [];
     const years = ["2566", "2567", "2568"];
     return years.map((year) => {
       const row =
         rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
         null;
-      const value = parseBmiValue(row?.[BMI_KEY]);
+      const value = bpStatusValue(normalizeValue(row?.[BP_KEY]));
       return { year, value };
     });
   }, [rowsByYear, selectedEmpId]);
 
-  const selectedBmiSummary = useMemo(() => {
-    if (!selectedEmpId) return null;
-    const row =
-      rowsByYear["2568"]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
-      null;
-    if (!row) return null;
-    const raw = normalizeValue(row[BMI_KEY]);
-    const value = parseBmiValue(row[BMI_KEY]);
-    const bucket = categorizeBmi(row[BMI_KEY]);
-    return { raw, value, bucket };
-  }, [rowsByYear, selectedEmpId]);
-
-  const bmiSummary2568 = useMemo(() => {
+  const bpSummary2568 = useMemo(() => {
     const rows = rowsByYear["2568"] ?? [];
-    const counts = {
-      underweight: 0,
-      normal: 0,
-      overweight: 0,
-      obese: 0,
-      notTested: 0,
-    };
-    let total = 0;
-    let sum = 0;
+    const counts = { low: 0, normal: 0, high: 0, notTested: 0, other: 0 };
     rows.forEach((row) => {
-      const value = parseBmiValue(row[BMI_KEY]);
-      if (value != null) {
-        sum += value;
-        total += 1;
-      }
-      const bucket = categorizeBmi(row[BMI_KEY]);
+      const bucket = categorizeBp(normalizeValue(row[BP_KEY]));
       counts[bucket] += 1;
     });
-    const average = total ? Number((sum / total).toFixed(2)) : null;
-    return { counts, average, total };
+    return counts;
   }, [rowsByYear]);
 
   const groupChart = useMemo(() => {
     const rows = rowsByYear[selectedYear] ?? [];
-    const grouped = new Map<
-      string,
-      { underweight: number; normal: number; overweight: number; obese: number; notTested: number }
-    >();
+    const grouped = new Map<string, { low: number; normal: number; high: number; notTested: number; other: number }>();
     rows.forEach((row) => {
       const groupName = normalizeValue(row[selectedGroupKey]) || "Unspecified";
-      const bucket = categorizeBmi(row[BMI_KEY]);
+      const bucket = categorizeBp(normalizeValue(row[BP_KEY]));
       if (!grouped.has(groupName)) {
-        grouped.set(groupName, {
-          underweight: 0,
-          normal: 0,
-          overweight: 0,
-          obese: 0,
-          notTested: 0,
-        });
+        grouped.set(groupName, { low: 0, normal: 0, high: 0, notTested: 0, other: 0 });
       }
       grouped.get(groupName)![bucket] += 1;
     });
@@ -184,8 +175,8 @@ export default function BmiReport() {
       .map(([name, counts]) => ({ name, ...counts }))
       .sort(
         (a, b) =>
-          b.underweight + b.normal + b.overweight + b.obese + b.notTested -
-          (a.underweight + a.normal + a.overweight + a.obese + a.notTested),
+          b.low + b.normal + b.high + b.notTested + b.other -
+          (a.low + a.normal + a.high + a.notTested + a.other),
       );
   }, [rowsByYear, selectedYear, selectedGroupKey]);
 
@@ -218,8 +209,10 @@ export default function BmiReport() {
 
         <section className="rounded-2xl border bg-white p-5">
           <div className="mb-4 text-lg font-semibold text-gray-800">ส่วนบุคคล</div>
-          <div className="grid gap-4">
-            {selectedPerson && (
+          {loading ? (
+            <div className="mt-4 text-sm text-gray-500">Loading…</div>
+          ) : selectedPerson ? (
+            <div className="grid gap-4 text-sm text-gray-700">
               <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-white p-4 shadow-sm">
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-lg font-semibold text-indigo-700">
@@ -242,91 +235,76 @@ export default function BmiReport() {
                   </div>
                 </div>
               </div>
-            )}
-            {selectedPerson && (
+
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="mb-3 text-lg font-semibold text-gray-800">
-                  สรุป BMI ของพนักงาน (ปี 2568)
+                  สรุปความดันโลหิตของพนักงาน (ปี 2568)
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs text-slate-600">ค่า BMI</div>
+                    <div className="text-xs text-slate-600">ผลตรวจ</div>
                     <div className="mt-2 text-2xl font-semibold text-slate-900">
-                      {selectedBmiSummary?.value != null ? selectedBmiSummary.value : "—"}
+                      {selectedBp?.raw || "—"}
                     </div>
                   </div>
                   <div
                     className={
-                      selectedBmiSummary?.bucket === "underweight"
+                      selectedBp?.bucket === "low"
                         ? "rounded-xl border border-yellow-200 bg-yellow-50 p-4"
-                        : selectedBmiSummary?.bucket === "normal"
+                        : selectedBp?.bucket === "normal"
                           ? "rounded-xl border border-emerald-200 bg-emerald-50 p-4"
-                        : selectedBmiSummary?.bucket === "overweight"
-                            ? "rounded-xl border border-orange-200 bg-orange-50 p-4"
-                            : selectedBmiSummary?.bucket === "obese"
-                              ? "rounded-xl border border-red-200 bg-red-50 p-4"
-                              : "rounded-xl border border-gray-200 bg-gray-50 p-4"
+                          : selectedBp?.bucket === "high"
+                            ? "rounded-xl border border-red-200 bg-red-50 p-4"
+                            : "rounded-xl border border-gray-200 bg-gray-50 p-4"
                     }
                   >
-                    <div className="text-xs text-slate-600">หมวด BMI</div>
+                    <div className="text-xs text-slate-600">หมวด</div>
                     <div
                       className={
-                        selectedBmiSummary?.bucket === "underweight"
+                        selectedBp?.bucket === "low"
                           ? "mt-2 text-2xl font-semibold text-yellow-700"
-                          : selectedBmiSummary?.bucket === "normal"
+                          : selectedBp?.bucket === "normal"
                             ? "mt-2 text-2xl font-semibold text-emerald-700"
-                            : selectedBmiSummary?.bucket === "overweight"
-                              ? "mt-2 text-2xl font-semibold text-orange-700"
-                              : selectedBmiSummary?.bucket === "obese"
-                                ? "mt-2 text-2xl font-semibold text-red-700"
-                                : "mt-2 text-2xl font-semibold text-gray-700"
+                            : selectedBp?.bucket === "high"
+                              ? "mt-2 text-2xl font-semibold text-red-700"
+                              : "mt-2 text-2xl font-semibold text-gray-700"
                       }
                     >
-                      {selectedBmiSummary?.bucket === "underweight"
-                        ? "น้ำหนักต่ำกว่าเกณฑ์"
-                        : selectedBmiSummary?.bucket === "normal"
-                          ? "ปกติ"
-                          : selectedBmiSummary?.bucket === "overweight"
-                            ? "น้ำหนักเกินเกณฑ์"
-                            : selectedBmiSummary?.bucket === "obese"
-                              ? "อ้วน"
-                              : "ไม่ได้รับการตรวจ"}
+                      {bpCategoryLabel(selectedBp?.bucket ?? "other")}
                     </div>
                   </div>
                 </div>
               </div>
-            )}
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <div className="text-lg font-semibold text-gray-800">แนวโน้ม BMI รายปี</div>
-              {loading ? (
-                <div className="mt-4 text-sm text-gray-500">Loading…</div>
-              ) : selectedPerson ? (
-                <div className="mt-4">
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={bmiTrend}>
-                        <XAxis dataKey="year" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          name="BMI"
-                          stroke="#2563EB"
-                          strokeWidth={2}
-                          dot={{ r: 4 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="text-lg font-semibold text-gray-800">แนวโน้มรายปี</div>
+                <div className="mt-4 h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={bpTrend}>
+                      <XAxis dataKey="year" />
+                      <YAxis
+                        domain={[0, 1.2]}
+                        ticks={[0.2, 0.6, 1]}
+                        tickFormatter={(value) =>
+                          value >= 1 ? "สูง" : value >= 0.6 ? "ปกติ" : "ต่ำ"
+                        }
+                      />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#2563EB"
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-              ) : (
-                <div className="mt-4 text-sm text-gray-500">
-                  เลือกพนักงานเพื่อดูรายละเอียด
-                </div>
-              )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-4 text-sm text-gray-500">เลือกพนักงานเพื่อดูรายละเอียด</div>
+          )}
         </section>
 
         <section className="rounded-2xl border bg-white p-5">
@@ -334,46 +312,37 @@ export default function BmiReport() {
           <div className="grid gap-4">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="mb-4 text-lg font-semibold text-gray-800">
-                สรุป BMI ปี 2568
+                สรุปความดันโลหิต ปี 2568
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                   <div className="text-xs text-emerald-700">ปกติ</div>
                   <div className="mt-2 text-2xl font-semibold text-emerald-900">
-                    {bmiSummary2568.counts.normal}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
-                  <div className="text-xs text-orange-700">น้ำหนักเกินเกณฑ์</div>
-                  <div className="mt-2 text-2xl font-semibold text-orange-900">
-                    {bmiSummary2568.counts.overweight}
+                    {bpSummary2568.normal}
                   </div>
                 </div>
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                  <div className="text-xs text-red-700">อ้วน</div>
+                  <div className="text-xs text-red-700">ความดันสูง</div>
                   <div className="mt-2 text-2xl font-semibold text-red-900">
-                    {bmiSummary2568.counts.obese}
+                    {bpSummary2568.high}
                   </div>
                 </div>
                 <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                  <div className="text-xs text-yellow-700">น้ำหนักต่ำกว่าเกณฑ์</div>
+                  <div className="text-xs text-yellow-700">ความดันต่ำ</div>
                   <div className="mt-2 text-2xl font-semibold text-yellow-900">
-                    {bmiSummary2568.counts.underweight}
+                    {bpSummary2568.low}
                   </div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                   <div className="text-xs text-gray-600">ไม่ได้รับการตรวจ</div>
                   <div className="mt-2 text-2xl font-semibold text-gray-900">
-                    {bmiSummary2568.counts.notTested}
+                    {bpSummary2568.notTested}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-xs text-slate-600">BMI เฉลี่ย (ปี 2568)</div>
+                  <div className="text-xs text-slate-600">อื่นๆ</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">
-                    {bmiSummary2568.average ?? "—"}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    จำนวนผู้มีค่า BMI: {bmiSummary2568.total}
+                    {bpSummary2568.other}
                   </div>
                 </div>
               </div>
@@ -382,7 +351,7 @@ export default function BmiReport() {
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-lg font-semibold text-gray-800">
-                  สัดส่วน BMI ตามกลุ่ม
+                  สัดส่วนความดันโลหิตตามกลุ่ม
                 </div>
                 <label className="flex flex-col gap-2 text-xs text-gray-500 sm:flex-row sm:items-center">
                   จัดกลุ่มตาม
@@ -393,11 +362,7 @@ export default function BmiReport() {
                   >
                     {GROUP_FIELDS.map((field) => (
                       <option key={field.key} value={field.key}>
-                        {field.label === "Division"
-                          ? "Division"
-                          : field.label === "Department"
-                            ? "Department"
-                            : "Section"}
+                        {field.label}
                       </option>
                     ))}
                   </select>
@@ -411,26 +376,11 @@ export default function BmiReport() {
                       <YAxis allowDecimals={false} />
                       <Tooltip />
                       <Legend />
-                      <Bar
-                        dataKey="underweight"
-                        name="น้ำหนักต่ำกว่าเกณฑ์"
-                        fill="#FACC15"
-                        stackId="bmi"
-                      />
-                      <Bar dataKey="normal" name="ปกติ" fill="#16A34A" stackId="bmi" />
-                      <Bar
-                        dataKey="overweight"
-                        name="น้ำหนักเกินเกณฑ์"
-                        fill="#F97316"
-                        stackId="bmi"
-                      />
-                      <Bar dataKey="obese" name="อ้วน" fill="#DC2626" stackId="bmi" />
-                      <Bar
-                        dataKey="notTested"
-                        name="ไม่ได้รับการตรวจ"
-                        fill="#6B7280"
-                        stackId="bmi"
-                      />
+                      <Bar dataKey="low" name="ความดันต่ำ" fill="#FACC15" stackId="bp" />
+                      <Bar dataKey="normal" name="ปกติ" fill="#16A34A" stackId="bp" />
+                      <Bar dataKey="high" name="ความดันสูง" fill="#DC2626" stackId="bp" />
+                      <Bar dataKey="notTested" name="ไม่ได้รับการตรวจ" fill="#6B7280" stackId="bp" />
+                      <Bar dataKey="other" name="อื่นๆ" fill="#94A3B8" stackId="bp" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -444,7 +394,7 @@ export default function BmiReport() {
         </section>
 
         <div className="text-xs text-gray-500">
-          <Link href="/user/health-check/health-risk" className="hover:underline">
+          <Link href="/admin/health-check/health-risk" className="hover:underline">
             กลับไปหน้า Health Risk
           </Link>
         </div>

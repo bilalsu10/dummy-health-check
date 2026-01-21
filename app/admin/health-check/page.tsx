@@ -11,7 +11,7 @@ export default function HealthCheckHub() {
       <main className="mx-auto max-w-6xl px6 pt-18 pb-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
-            href="/user/health-check/health-risk"
+            href="/admin/health-check/health-risk"
             className="group rounded-2xl border bg-white p-5 hover:shadow-md hover:shadow-red-600/80"
           >
             <h3 className="text-base font-semibold">Health Risk</h3>
@@ -22,7 +22,7 @@ export default function HealthCheckHub() {
           </Link>
 
           <Link
-            href="/user/health-check/by-age-group"
+            href="/admin/health-check/by-age-group"
             className="group rounded-2xl border bg-white p-5 hover:shadow-md hover:shadow-red-600/80"
           >
             <h3 className="text-base font-semibold">By Age Group</h3>
@@ -33,7 +33,7 @@ export default function HealthCheckHub() {
           </Link>
 
           <Link 
-            href="/user/health-check/trend"
+            href="/admin/health-check/trend"
             className="group rounded-2xl border bg-white p-5 hover:shadow-md hover:shadow-red-600/80"
           >
             <h3 className="text-base font-semibold">Trend</h3>
