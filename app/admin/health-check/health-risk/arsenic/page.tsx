@@ -87,6 +87,9 @@ export default function UrineArsenicReport() {
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [selectedYear] = useState("2568");
   const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
+  const [overviewYear, setOverviewYear] = useState("2568");
+  const [overviewDepartment, setOverviewDepartment] = useState("");
+  const [overviewSection, setOverviewSection] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -128,6 +131,15 @@ export default function UrineArsenicReport() {
       active = false;
     };
   }, [factoryId]);
+
+  useEffect(() => {
+    setOverviewDepartment("");
+    setOverviewSection("");
+  }, [factoryId, overviewYear]);
+
+  useEffect(() => {
+    setOverviewSection("");
+  }, [overviewDepartment]);
 
   const people = useMemo(() => {
     const baseRows = rowsByYear[selectedYear] ?? [];
@@ -171,18 +183,53 @@ export default function UrineArsenicReport() {
     });
   }, [rowsByYear, selectedEmpId]);
 
-  const summary2568 = useMemo(() => {
-    const rows = rowsByYear["2568"] ?? [];
+  const overviewRowsYear = useMemo(() => rowsByYear[overviewYear] ?? [], [rowsByYear, overviewYear]);
+
+  const overviewDepartmentOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        overviewRowsYear
+          .map((row) => normalizeValue(row.Department))
+          .filter((value) => value && value !== "-"),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [overviewRowsYear]);
+
+  const overviewSectionOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        overviewRowsYear
+          .filter((row) =>
+            overviewDepartment ? normalizeValue(row.Department) === overviewDepartment : true,
+          )
+          .map((row) => normalizeValue(row.Section))
+          .filter((value) => value && value !== "-"),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [overviewRowsYear, overviewDepartment]);
+
+  const overviewRows = useMemo(() => {
+    return overviewRowsYear.filter((row) => {
+      const department = normalizeValue(row.Department);
+      const section = normalizeValue(row.Section);
+      if (overviewDepartment && department !== overviewDepartment) return false;
+      if (overviewSection && section !== overviewSection) return false;
+      return true;
+    });
+  }, [overviewRowsYear, overviewDepartment, overviewSection]);
+
+  const summaryOverview = useMemo(() => {
+    const rows = overviewRows;
     const counts = { normal: 0, abnormal: 0, notTested: 0, other: 0 };
     rows.forEach((row) => {
       const bucket = categorizeArsenic(getArsenicRawValue(row));
       counts[bucket] += 1;
     });
     return counts;
-  }, [rowsByYear]);
+  }, [overviewRows]);
 
   const groupChart = useMemo(() => {
-    const rows = rowsByYear[selectedYear] ?? [];
+    const rows = overviewRows;
     const grouped = new Map<string, { normal: number; abnormal: number; notTested: number; other: number }>();
     rows.forEach((row) => {
       const groupName = normalizeValue(row[selectedGroupKey]) || "Unspecified";
@@ -199,7 +246,7 @@ export default function UrineArsenicReport() {
           b.normal + b.abnormal + b.notTested + b.other -
           (a.normal + a.abnormal + a.notTested + a.other),
       );
-  }, [rowsByYear, selectedYear, selectedGroupKey]);
+  }, [overviewRows, selectedGroupKey]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -267,7 +314,7 @@ export default function UrineArsenicReport() {
 
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="mb-3 text-lg font-semibold text-gray-800">
-                  สรุปผลตรวจสารหนูในปัสสาวะ (ปี 2568)
+                  สรุปผลตรวจสารหนูในปัสสาวะ (ปี {overviewYear})
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -327,33 +374,81 @@ export default function UrineArsenicReport() {
         <section className="rounded-2xl border bg-white p-5">
           <div className="mb-4 text-lg font-semibold text-gray-800">ภาพรวม</div>
           <div className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <label className="flex flex-col gap-2 text-xs text-gray-500">
+                Year
+                <select
+                  className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                  value={overviewYear}
+                  onChange={(event) => setOverviewYear(event.target.value)}
+                >
+                  {(factoryId === 1 ? ["2565", "2566", "2567", "2568"] : ["2566", "2567", "2568"]).map(
+                    (year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-gray-500">
+                Department
+                <select
+                  className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                  value={overviewDepartment}
+                  onChange={(event) => setOverviewDepartment(event.target.value)}
+                >
+                  <option value="">All departments</option>
+                  {overviewDepartmentOptions.map((department) => (
+                    <option key={department} value={department}>
+                      {department}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-gray-500">
+                Section
+                <select
+                  className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                  value={overviewSection}
+                  onChange={(event) => setOverviewSection(event.target.value)}
+                >
+                  <option value="">All sections</option>
+                  {overviewSectionOptions.map((section) => (
+                    <option key={section} value={section}>
+                      {section}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="mb-4 text-lg font-semibold text-gray-800">
-                สรุปผลตรวจสารหนูในปัสสาวะ ปี 2568
+                สรุปผลตรวจสารหนูในปัสสาวะ ปี {overviewYear}
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                   <div className="text-xs text-emerald-700">ปกติ</div>
                   <div className="mt-2 text-2xl font-semibold text-emerald-900">
-                    {summary2568.normal}
+                    {summaryOverview.normal}
                   </div>
                 </div>
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                   <div className="text-xs text-red-700">ผิดปกติ</div>
                   <div className="mt-2 text-2xl font-semibold text-red-900">
-                    {summary2568.abnormal}
+                    {summaryOverview.abnormal}
                   </div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                   <div className="text-xs text-gray-600">ไม่ได้รับการตรวจ</div>
                   <div className="mt-2 text-2xl font-semibold text-gray-900">
-                    {summary2568.notTested}
+                    {summaryOverview.notTested}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-xs text-slate-600">อื่นๆ</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">
-                    {summary2568.other}
+                    {summaryOverview.other}
                   </div>
                 </div>
               </div>
@@ -412,3 +507,4 @@ export default function UrineArsenicReport() {
     </div>
   );
 }
+

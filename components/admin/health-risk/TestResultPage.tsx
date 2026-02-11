@@ -1,13 +1,16 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
+  Cell,
   Legend,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -23,12 +26,6 @@ type TestResultPageProps = {
   backLabel?: string;
 };
 
-const GROUP_FIELDS = [
-  { label: "Division", key: "Division" },
-  { label: "Department", key: "Department" },
-  { label: "Section", key: "Section" },
-];
-
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
 
@@ -39,6 +36,13 @@ const NUMERIC_THRESHOLDS: Record<string, number> = {
   "Urine Toluene": 1.6,
   "Urine Acetone": 25,
   "Urine Xylene": 1.5,
+};
+
+const PIE_COLORS: Record<string, string> = {
+  normal: "#16A34A",
+  abnormal: "#DC2626",
+  notTested: "#6B7280",
+  other: "#94A3B8",
 };
 
 const getTestRawValue = (
@@ -117,7 +121,7 @@ const trendValue = (value: string, testKey: string) => {
 };
 
 const getDisplayValue = (value: string, testKey: string) => {
-  if (!value) return "—";
+  if (!value) return "-";
   const numeric = parseNumeric(value);
   if (numeric !== null && value.includes(",")) {
     return numeric.toString();
@@ -126,6 +130,38 @@ const getDisplayValue = (value: string, testKey: string) => {
     return numeric.toString();
   }
   return value;
+};
+
+type TrendTooltipProps = {
+  active?: boolean;
+  payload?: Array<{ payload?: { raw?: string; value?: number | null; bucket?: string } }>;
+  testKey: string;
+};
+
+const TrendTooltip = ({ active, payload, testKey }: TrendTooltipProps) => {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload;
+  if (!point) return null;
+
+  const textColor =
+    point.bucket === "abnormal"
+      ? "text-red-700"
+      : point.bucket === "normal"
+        ? "text-emerald-700"
+        : "text-gray-700";
+
+  const shownValue =
+    testKey === "Blood Glucose"
+      ? point.value ?? "-"
+      : getDisplayValue(point.raw ?? "", testKey);
+
+  return (
+    <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
+      <div className={`font-semibold ${textColor}`}>
+        {shownValue} {categoryLabelFromValue(point.raw ?? "", point.bucket ?? "other")}
+      </div>
+    </div>
+  );
 };
 
 export default function TestResultPage({
@@ -139,8 +175,10 @@ export default function TestResultPage({
   const [error, setError] = useState<string | null>(null);
   const [factoryId, setFactoryId] = useState<1 | 2>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
-  const [selectedYear] = useState("2568");
-  const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
+  const [selectedYear, setSelectedYear] = useState("2568");
+  const [overviewYear, setOverviewYear] = useState("2568");
+  const [overviewDepartment, setOverviewDepartment] = useState("");
+  const [overviewSection, setOverviewSection] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -183,16 +221,49 @@ export default function TestResultPage({
     };
   }, [factoryId]);
 
+  useEffect(() => {
+    setSelectedEmpId("");
+    setSelectedYear("2568");
+  }, [factoryId]);
+
+  useEffect(() => {
+    setOverviewDepartment("");
+    setOverviewSection("");
+  }, [factoryId, overviewYear]);
+
+  useEffect(() => {
+    setOverviewSection("");
+  }, [overviewDepartment]);
+
+  const individualYears = useMemo(
+    () => (factoryId === 1 ? ["2565", "2566", "2567", "2568"] : ["2566", "2567", "2568"]),
+    [factoryId],
+  );
+
   const people = useMemo(() => {
-    const baseRows = rowsByYear[selectedYear] ?? [];
-    return baseRows
-      .map((row) => ({
-        empId: normalizeValue(row.SCG_EmpID),
-        name: normalizeValue(row.Name),
-        department: normalizeValue(row.Department),
-      }))
-      .filter((person) => person.empId);
-  }, [rowsByYear, selectedYear]);
+    const merged = new Map<string, { empId: string; name: string; department: string }>();
+    individualYears.forEach((year) => {
+      (rowsByYear[year] ?? []).forEach((row) => {
+        const empId = normalizeValue(row.SCG_EmpID);
+        if (!empId) return;
+        if (!merged.has(empId)) {
+          merged.set(empId, {
+            empId,
+            name: normalizeValue(row.Name),
+            department: normalizeValue(row.Department),
+          });
+        }
+      });
+    });
+    return Array.from(merged.values());
+  }, [rowsByYear, individualYears]);
+
+  const selectedEmpAvailableYears = useMemo(() => {
+    if (!selectedEmpId) return individualYears;
+    return individualYears.filter((year) =>
+      (rowsByYear[year] ?? []).some((row) => normalizeValue(row.SCG_EmpID) === selectedEmpId),
+    );
+  }, [individualYears, rowsByYear, selectedEmpId]);
 
   const selectedPerson = useMemo(() => {
     if (!selectedEmpId) return null;
@@ -202,16 +273,23 @@ export default function TestResultPage({
     );
   }, [rowsByYear, selectedEmpId, selectedYear]);
 
+  useEffect(() => {
+    if (!selectedEmpId) return;
+    if (!selectedEmpAvailableYears.includes(selectedYear) && selectedEmpAvailableYears.length) {
+      setSelectedYear(selectedEmpAvailableYears[selectedEmpAvailableYears.length - 1]);
+    }
+  }, [selectedEmpId, selectedEmpAvailableYears, selectedYear]);
+
   const selectedResult = useMemo(() => {
     if (!selectedEmpId) return null;
     const row =
-      rowsByYear["2568"]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
+      rowsByYear[selectedYear]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
       null;
     if (!row) return null;
     const raw = getTestRawValue(row, testKey, fallbackKeys);
     const bucket = categorizeNormalAbnormal(raw, testKey);
     return { raw, bucket };
-  }, [rowsByYear, selectedEmpId, testKey, fallbackKeys]);
+  }, [rowsByYear, selectedEmpId, selectedYear, testKey, fallbackKeys]);
 
   const trend = useMemo(() => {
     if (!selectedEmpId) return [];
@@ -225,6 +303,7 @@ export default function TestResultPage({
       const value = trendValue(raw, testKey);
       return {
         year,
+        raw,
         value,
         bucket,
         normalValue: bucket === "normal" ? value : null,
@@ -233,23 +312,68 @@ export default function TestResultPage({
     });
   }, [rowsByYear, selectedEmpId, testKey, fallbackKeys]);
 
-  const summary2568 = useMemo(() => {
-    const rows = rowsByYear["2568"] ?? [];
+  const overviewRowsYear = useMemo(() => rowsByYear[overviewYear] ?? [], [rowsByYear, overviewYear]);
+
+  const overviewDepartmentOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        overviewRowsYear
+          .map((row) => normalizeValue(row.Department))
+          .filter((value) => value && value !== "-"),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [overviewRowsYear]);
+
+  const overviewSectionOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        overviewRowsYear
+          .filter((row) =>
+            overviewDepartment ? normalizeValue(row.Department) === overviewDepartment : true,
+          )
+          .map((row) => normalizeValue(row.Section))
+          .filter((value) => value && value !== "-"),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [overviewRowsYear, overviewDepartment]);
+
+  const overviewRows = useMemo(() => {
+    return overviewRowsYear.filter((row) => {
+      const department = normalizeValue(row.Department);
+      const section = normalizeValue(row.Section);
+      if (overviewDepartment && department !== overviewDepartment) return false;
+      if (overviewSection && section !== overviewSection) return false;
+      return true;
+    });
+  }, [overviewRowsYear, overviewDepartment, overviewSection]);
+
+  const summaryOverview = useMemo(() => {
+    const rows = overviewRows;
     const counts = { normal: 0, abnormal: 0, notTested: 0, other: 0 };
     rows.forEach((row) => {
       const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
       counts[bucket] += 1;
     });
     return counts;
-  }, [rowsByYear, testKey, fallbackKeys]);
+  }, [overviewRows, testKey, fallbackKeys]);
+
+  const overviewPieData = useMemo(
+    () => [
+      { key: "normal", name: "ปกติ", value: summaryOverview.normal },
+      { key: "abnormal", name: "ผิดปกติ", value: summaryOverview.abnormal },
+      { key: "notTested", name: "ไม่ได้รับการตรวจ", value: summaryOverview.notTested },
+      { key: "other", name: "อื่นๆ", value: summaryOverview.other },
+    ].filter((item) => item.value > 0),
+    [summaryOverview],
+  );
 
   const isNumericTrend = testKey === "Blood Glucose";
 
-  const groupChart = useMemo(() => {
-    const rows = rowsByYear[selectedYear] ?? [];
+  const buildGroupChart = (groupKey: "Department" | "Section") => {
+    const rows = overviewRows;
     const grouped = new Map<string, { normal: number; abnormal: number; notTested: number; other: number }>();
     rows.forEach((row) => {
-      const groupName = normalizeValue(row[selectedGroupKey]) || "Unspecified";
+      const groupName = normalizeValue(row[groupKey]) || "Unspecified";
       const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
       if (!grouped.has(groupName)) {
         grouped.set(groupName, { normal: 0, abnormal: 0, notTested: 0, other: 0 });
@@ -263,7 +387,25 @@ export default function TestResultPage({
           b.normal + b.abnormal + b.notTested + b.other -
           (a.normal + a.abnormal + a.notTested + a.other),
       );
-  }, [rowsByYear, selectedYear, selectedGroupKey, testKey, fallbackKeys]);
+  };
+
+  const departmentChart = useMemo(
+    () => buildGroupChart("Department"),
+    [overviewRows, testKey, fallbackKeys],
+  );
+
+  const sectionChart = useMemo(
+    () => buildGroupChart("Section"),
+    [overviewRows, testKey, fallbackKeys],
+  );
+
+  const singleSectionName = useMemo(() => {
+    if (overviewSectionOptions.length === 1) return overviewSectionOptions[0];
+    return "";
+  }, [overviewSectionOptions]);
+
+  const shouldShowSectionPie =
+    Boolean(overviewSection) || (Boolean(overviewDepartment) && overviewSectionOptions.length === 1);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -292,7 +434,7 @@ export default function TestResultPage({
                 <option value="">เลือกพนักงาน</option>
                 {people.map((person) => (
                   <option key={person.empId} value={person.empId}>
-                    {person.empId} — {person.name || "ไม่ทราบชื่อ"}
+                    {person.empId} - {person.name || "ไม่ทราบชื่อ"}
                   </option>
                 ))}
               </select>
@@ -304,7 +446,7 @@ export default function TestResultPage({
         <section className="rounded-2xl border bg-white p-5">
           <div className="mb-4 text-lg font-semibold text-gray-800">ส่วนบุคคล</div>
           {loading ? (
-            <div className="mt-4 text-sm text-gray-500">Loading…</div>
+            <div className="mt-4 text-sm text-gray-500">Loading...</div>
           ) : selectedPerson ? (
             <div className="grid gap-4 text-sm text-gray-700">
               <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-white p-4 shadow-sm">
@@ -330,14 +472,30 @@ export default function TestResultPage({
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <div className="mb-3 text-lg font-semibold text-gray-800">
-                  สรุปผลตรวจ {title} (ปี 2568)
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-lg font-semibold text-gray-800">
+                    สรุปผลตรวจ {title} ปี {selectedYear}
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    Year
+                    <select
+                      className="h-9 rounded-lg border border-gray-300 bg-white px-2 text-sm text-gray-900"
+                      value={selectedYear}
+                      onChange={(event) => setSelectedYear(event.target.value)}
+                    >
+                      {selectedEmpAvailableYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div className="text-xs text-slate-600">ผลตรวจ</div>
                     <div className="mt-2 text-2xl font-semibold text-slate-900">
-                      {selectedResult ? getDisplayValue(selectedResult.raw, testKey) : "—"}
+                      {selectedResult ? getDisplayValue(selectedResult.raw, testKey) : "-"}
                     </div>
                   </div>
                   <div
@@ -382,50 +540,44 @@ export default function TestResultPage({
                           tickFormatter={(value) => (value >= 1 ? "ผิดปกติ" : "ปกติ")}
                         />
                       )}
-                      <Tooltip />
-                      {isNumericTrend ? (
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          stroke="#2563EB"
-                          strokeWidth={2}
-                          dot={({ payload }) => {
-                            const bucket = String(payload?.bucket ?? "");
-                            const fill = bucket === "abnormal" ? "#DC2626" : "#2563EB";
-                            return <circle r={4} fill={fill} />;
-                          }}
-                        />
-                      ) : (
-                        <>
-                          <Line
-                            type="monotone"
-                            dataKey="normalValue"
-                            stroke="#2563EB"
-                            strokeWidth={2}
-                            dot={false}
-                            isAnimationActive={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="abnormalValue"
-                            stroke="#DC2626"
-                            strokeWidth={2}
-                            dot={false}
-                            isAnimationActive={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke="transparent"
-                            strokeWidth={0}
-                            dot={({ payload }) => {
-                              const bucket = String(payload?.bucket ?? "");
-                              const fill = bucket === "abnormal" ? "#DC2626" : "#2563EB";
-                              return <circle r={4} fill={fill} />;
-                            }}
-                          />
-                        </>
-                      )}
+                      <Tooltip content={<TrendTooltip testKey={testKey} />} />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#2563EB"
+                        strokeWidth={2}
+                        connectNulls={false}
+                        dot={({ cx, cy, payload }) => {
+                          if (typeof cx !== "number" || typeof cy !== "number") return null;
+                          const bucket = String(payload?.bucket ?? "");
+                          const fill = bucket === "abnormal" ? "#DC2626" : "#2563EB";
+                          return (
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={4}
+                              fill={fill}
+                              stroke="#1F2937"
+                              strokeWidth={0.5}
+                            />
+                          );
+                        }}
+                        activeDot={({ cx, cy, payload }) => {
+                          if (typeof cx !== "number" || typeof cy !== "number") return null;
+                          const bucket = String(payload?.bucket ?? "");
+                          const fill = bucket === "abnormal" ? "#DC2626" : "#2563EB";
+                          return (
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={5}
+                              fill={fill}
+                              stroke="#111827"
+                              strokeWidth={1}
+                            />
+                          );
+                        }}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -438,76 +590,186 @@ export default function TestResultPage({
 
         <section className="rounded-2xl border bg-white p-5">
           <div className="mb-4 text-lg font-semibold text-gray-800">ภาพรวม</div>
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
+            <label className="flex flex-col gap-2 text-xs text-gray-600">
+              Year
+              <select
+                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={overviewYear}
+                onChange={(event) => setOverviewYear(event.target.value)}
+              >
+                {factoryId === 1 ? (
+                  <>
+                    <option value="2565">2565</option>
+                    <option value="2566">2566</option>
+                    <option value="2567">2567</option>
+                    <option value="2568">2568</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="2566">2566</option>
+                    <option value="2567">2567</option>
+                    <option value="2568">2568</option>
+                  </>
+                )}
+              </select>
+            </label>
+            <label className="flex flex-col gap-2 text-xs text-gray-600">
+              Department
+              <select
+                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={overviewDepartment}
+                onChange={(event) => setOverviewDepartment(event.target.value)}
+              >
+                <option value="">ทั้งหมด</option>
+                {overviewDepartmentOptions.map((department) => (
+                  <option key={department} value={department}>
+                    {department}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-2 text-xs text-gray-600">
+              Section
+              <select
+                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={overviewSection}
+                onChange={(event) => setOverviewSection(event.target.value)}
+              >
+                <option value="">ทั้งหมด</option>
+                {overviewSectionOptions.map((section) => (
+                  <option key={section} value={section}>
+                    {section}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <div className="grid gap-4">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="mb-4 text-lg font-semibold text-gray-800">
-                สรุปผลตรวจ {title} ปี 2568
+                สรุปผลตรวจ {title} ปี {overviewYear}
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                   <div className="text-xs text-emerald-700">ปกติ</div>
                   <div className="mt-2 text-2xl font-semibold text-emerald-900">
-                    {summary2568.normal}
+                    {summaryOverview.normal}
                   </div>
                 </div>
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                   <div className="text-xs text-red-700">ผิดปกติ</div>
                   <div className="mt-2 text-2xl font-semibold text-red-900">
-                    {summary2568.abnormal}
+                    {summaryOverview.abnormal}
                   </div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                   <div className="text-xs text-gray-600">ไม่ได้รับการตรวจ</div>
                   <div className="mt-2 text-2xl font-semibold text-gray-900">
-                    {summary2568.notTested}
+                    {summaryOverview.notTested}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-xs text-slate-600">อื่นๆ</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">
-                    {summary2568.other}
+                    {summaryOverview.other}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-lg font-semibold text-gray-800">สัดส่วน {title} ตามกลุ่ม</div>
-                <label className="flex flex-col gap-2 text-xs text-gray-500 sm:flex-row sm:items-center">
-                  จัดกลุ่มตาม
-                  <select
-                    className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
-                    value={selectedGroupKey}
-                    onChange={(event) => setSelectedGroupKey(event.target.value)}
-                  >
-                    {GROUP_FIELDS.map((field) => (
-                      <option key={field.key} value={field.key}>
-                        {field.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="mb-3 text-lg font-semibold text-gray-800">
+                  {overviewDepartment
+                    ? overviewDepartment
+                    : `สัดส่วน ${title} ตาม Department`}
+                </div>
+                <div className="h-72">
+                  {overviewDepartment ? (
+                    overviewPieData.length ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={overviewPieData} dataKey="value" nameKey="name" outerRadius={95} label>
+                            {overviewPieData.map((entry) => (
+                              <Cell key={entry.key} fill={PIE_COLORS[entry.key] ?? "#94A3B8"} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                        ไม่มีกลุ่มข้อมูล
+                      </div>
+                    )
+                  ) : departmentChart.length ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={departmentChart}>
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="normal" name="ปกติ" fill="#16A34A" stackId="test" />
+                        <Bar dataKey="abnormal" name="ผิดปกติ" fill="#DC2626" stackId="test" />
+                        <Bar dataKey="notTested" name="ไม่ได้รับการตรวจ" fill="#6B7280" stackId="test" />
+                        <Bar dataKey="other" name="อื่นๆ" fill="#94A3B8" stackId="test" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                      ไม่มีกลุ่มข้อมูล
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="h-72">
-                {groupChart.length ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={groupChart}>
-                      <XAxis dataKey="name" />
-                      <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="normal" name="ปกติ" fill="#16A34A" stackId="test" />
-                      <Bar dataKey="abnormal" name="ผิดปกติ" fill="#DC2626" stackId="test" />
-                      <Bar dataKey="notTested" name="ไม่ได้รับการตรวจ" fill="#6B7280" stackId="test" />
-                      <Bar dataKey="other" name="อื่นๆ" fill="#94A3B8" stackId="test" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-gray-500">
-                    ไม่มีกลุ่มข้อมูล
-                  </div>
-                )}
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="mb-3 text-lg font-semibold text-gray-800">
+                  {overviewSection
+                    ? overviewSection
+                    : shouldShowSectionPie && singleSectionName
+                      ? singleSectionName
+                    : `สัดส่วน ${title} ตาม Section`}
+                </div>
+                <div className="h-72">
+                  {shouldShowSectionPie ? (
+                    overviewPieData.length ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={overviewPieData} dataKey="value" nameKey="name" outerRadius={95} label>
+                            {overviewPieData.map((entry) => (
+                              <Cell key={entry.key} fill={PIE_COLORS[entry.key] ?? "#94A3B8"} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                        ไม่มีกลุ่มข้อมูล
+                      </div>
+                    )
+                  ) : sectionChart.length ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={sectionChart}>
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="normal" name="ปกติ" fill="#16A34A" stackId="test" />
+                        <Bar dataKey="abnormal" name="ผิดปกติ" fill="#DC2626" stackId="test" />
+                        <Bar dataKey="notTested" name="ไม่ได้รับการตรวจ" fill="#6B7280" stackId="test" />
+                        <Bar dataKey="other" name="อื่นๆ" fill="#94A3B8" stackId="test" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                      ไม่มีกลุ่มข้อมูล
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -522,3 +784,5 @@ export default function TestResultPage({
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -71,14 +71,44 @@ const bpStatusValue = (value: string) => {
   return null;
 };
 
+type TrendTooltipProps = {
+  active?: boolean;
+  payload?: Array<{ payload?: { year?: string; raw?: string; bucket?: string; value?: number | null } }>;
+};
+
+const BpTrendTooltip = ({ active, payload }: TrendTooltipProps) => {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload;
+  if (!point) return null;
+  const bucket = point.bucket || "other";
+  const textColor =
+    bucket === "high"
+      ? "text-red-700"
+      : bucket === "low"
+        ? "text-yellow-700"
+        : bucket === "normal"
+          ? "text-emerald-700"
+          : "text-gray-700";
+  return (
+    <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
+      <div className={`font-semibold ${textColor}`}>
+        {point.raw || "-"} {bpCategoryLabel(bucket)}
+      </div>
+    </div>
+  );
+};
+
 export default function BloodPressureReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [factoryId, setFactoryId] = useState<1 | 2>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
-  const [selectedYear] = useState("2568");
+  const [selectedYear, setSelectedYear] = useState("2568");
   const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
+  const [overviewYear, setOverviewYear] = useState("2568");
+  const [overviewDepartment, setOverviewDepartment] = useState("");
+  const [overviewSection, setOverviewSection] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -121,16 +151,49 @@ export default function BloodPressureReport() {
     };
   }, [factoryId]);
 
+  useEffect(() => {
+    setSelectedEmpId("");
+    setSelectedYear("2568");
+  }, [factoryId]);
+
+  useEffect(() => {
+    setOverviewDepartment("");
+    setOverviewSection("");
+  }, [factoryId, overviewYear]);
+
+  useEffect(() => {
+    setOverviewSection("");
+  }, [overviewDepartment]);
+
+  const individualYears = useMemo(
+    () => (factoryId === 1 ? ["2565", "2566", "2567", "2568"] : ["2566", "2567", "2568"]),
+    [factoryId],
+  );
+
   const people = useMemo(() => {
-    const baseRows = rowsByYear[selectedYear] ?? [];
-    return baseRows
-      .map((row) => ({
-        empId: normalizeValue(row.SCG_EmpID),
-        name: normalizeValue(row.Name),
-        department: normalizeValue(row.Department),
-      }))
-      .filter((person) => person.empId);
-  }, [rowsByYear, selectedYear]);
+    const merged = new Map<string, { empId: string; name: string; department: string }>();
+    individualYears.forEach((year) => {
+      (rowsByYear[year] ?? []).forEach((row) => {
+        const empId = normalizeValue(row.SCG_EmpID);
+        if (!empId) return;
+        if (!merged.has(empId)) {
+          merged.set(empId, {
+            empId,
+            name: normalizeValue(row.Name),
+            department: normalizeValue(row.Department),
+          });
+        }
+      });
+    });
+    return Array.from(merged.values());
+  }, [rowsByYear, individualYears]);
+
+  const selectedEmpAvailableYears = useMemo(() => {
+    if (!selectedEmpId) return individualYears;
+    return individualYears.filter((year) =>
+      (rowsByYear[year] ?? []).some((row) => normalizeValue(row.SCG_EmpID) === selectedEmpId),
+    );
+  }, [individualYears, rowsByYear, selectedEmpId]);
 
   const selectedPerson = useMemo(() => {
     if (!selectedEmpId) return null;
@@ -143,13 +206,20 @@ export default function BloodPressureReport() {
   const selectedBp = useMemo(() => {
     if (!selectedEmpId) return null;
     const row =
-      rowsByYear["2568"]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
+      rowsByYear[selectedYear]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
       null;
     if (!row) return null;
     const raw = getBpRawValue(row);
     const bucket = categorizeBp(raw);
     return { raw, bucket };
-  }, [rowsByYear, selectedEmpId, factoryId]);
+  }, [rowsByYear, selectedEmpId, selectedYear]);
+
+  useEffect(() => {
+    if (!selectedEmpId) return;
+    if (!selectedEmpAvailableYears.includes(selectedYear) && selectedEmpAvailableYears.length) {
+      setSelectedYear(selectedEmpAvailableYears[selectedEmpAvailableYears.length - 1]);
+    }
+  }, [selectedEmpId, selectedEmpAvailableYears, selectedYear]);
 
   const bpTrend = useMemo(() => {
     if (!selectedEmpId) return [];
@@ -158,23 +228,68 @@ export default function BloodPressureReport() {
       const row =
         rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
         null;
-      const value = bpStatusValue(getBpRawValue(row ?? null));
-      return { year, value };
+      const raw = getBpRawValue(row ?? null);
+      const bucket = categorizeBp(raw);
+      const value = bpStatusValue(raw);
+      return {
+        year,
+        raw,
+        value,
+        bucket,
+        lowValue: bucket === "low" ? value : null,
+        normalValue: bucket === "normal" ? value : null,
+        highValue: bucket === "high" ? value : null,
+      };
     });
-  }, [rowsByYear, selectedEmpId]);
+  }, [rowsByYear, selectedEmpId, factoryId]);
 
-  const bpSummary2568 = useMemo(() => {
-    const rows = rowsByYear["2568"] ?? [];
+  const overviewRowsYear = useMemo(() => rowsByYear[overviewYear] ?? [], [rowsByYear, overviewYear]);
+
+  const overviewDepartmentOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        overviewRowsYear
+          .map((row) => normalizeValue(row.Department))
+          .filter((value) => value && value !== "-"),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [overviewRowsYear]);
+
+  const overviewSectionOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        overviewRowsYear
+          .filter((row) =>
+            overviewDepartment ? normalizeValue(row.Department) === overviewDepartment : true,
+          )
+          .map((row) => normalizeValue(row.Section))
+          .filter((value) => value && value !== "-"),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [overviewRowsYear, overviewDepartment]);
+
+  const overviewRows = useMemo(() => {
+    return overviewRowsYear.filter((row) => {
+      const department = normalizeValue(row.Department);
+      const section = normalizeValue(row.Section);
+      if (overviewDepartment && department !== overviewDepartment) return false;
+      if (overviewSection && section !== overviewSection) return false;
+      return true;
+    });
+  }, [overviewRowsYear, overviewDepartment, overviewSection]);
+
+  const bpSummaryOverview = useMemo(() => {
+    const rows = overviewRows;
     const counts = { low: 0, normal: 0, high: 0, notTested: 0, other: 0 };
     rows.forEach((row) => {
       const bucket = categorizeBp(getBpRawValue(row));
       counts[bucket] += 1;
     });
     return counts;
-  }, [rowsByYear]);
+  }, [overviewRows]);
 
   const groupChart = useMemo(() => {
-    const rows = rowsByYear[selectedYear] ?? [];
+    const rows = overviewRows;
     const grouped = new Map<string, { low: number; normal: number; high: number; notTested: number; other: number }>();
     rows.forEach((row) => {
       const groupName = normalizeValue(row[selectedGroupKey]) || "Unspecified";
@@ -191,7 +306,7 @@ export default function BloodPressureReport() {
           b.low + b.normal + b.high + b.notTested + b.other -
           (a.low + a.normal + a.high + a.notTested + a.other),
       );
-  }, [rowsByYear, selectedYear, selectedGroupKey]);
+  }, [overviewRows, selectedGroupKey]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -222,7 +337,7 @@ export default function BloodPressureReport() {
                 <option value="">เลือกพนักงาน</option>
                 {people.map((person) => (
                   <option key={person.empId} value={person.empId}>
-                    {person.empId} — {person.name || "ไม่ทราบชื่อ"}
+                    {person.empId} - {person.name || "ไม่ทราบชื่อ"}
                   </option>
                 ))}
               </select>
@@ -234,7 +349,7 @@ export default function BloodPressureReport() {
         <section className="rounded-2xl border bg-white p-5">
           <div className="mb-4 text-lg font-semibold text-gray-800">ส่วนบุคคล</div>
           {loading ? (
-            <div className="mt-4 text-sm text-gray-500">Loading…</div>
+            <div className="mt-4 text-sm text-gray-500">Loading...</div>
           ) : selectedPerson ? (
             <div className="grid gap-4 text-sm text-gray-700">
               <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-white p-4 shadow-sm">
@@ -261,14 +376,30 @@ export default function BloodPressureReport() {
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <div className="mb-3 text-lg font-semibold text-gray-800">
-                  สรุปความดันโลหิตของพนักงาน (ปี 2568)
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-lg font-semibold text-gray-800">
+                    สรุปความดันโลหิตของพนักงาน (ปี {selectedYear})
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    Year
+                    <select
+                      className="h-9 rounded-lg border border-gray-300 bg-white px-2 text-sm text-gray-900"
+                      value={selectedYear}
+                      onChange={(event) => setSelectedYear(event.target.value)}
+                    >
+                      {selectedEmpAvailableYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div className="text-xs text-slate-600">ผลตรวจ</div>
                     <div className="mt-2 text-2xl font-semibold text-slate-900">
-                      {selectedBp?.raw || "—"}
+                      {selectedBp?.raw || "-"}
                     </div>
                   </div>
                   <div
@@ -313,13 +444,27 @@ export default function BloodPressureReport() {
                             value >= 1 ? "สูง" : value >= 0.6 ? "ปกติ" : "ต่ำ"
                           }
                         />
-                      <Tooltip />
+                      <Tooltip content={<BpTrendTooltip />} />
                       <Line
                         type="monotone"
                         dataKey="value"
                         stroke="#2563EB"
                         strokeWidth={2}
-                        dot={{ r: 4 }}
+                        dot={({ cx, cy, payload }) => {
+                          if (typeof cx !== "number" || typeof cy !== "number") return null;
+                          const bucket = String(payload?.bucket ?? "");
+                          const fill = bucket === "high" || bucket === "low" ? "#DC2626" : "#2563EB";
+                          return (
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={4}
+                              fill={fill}
+                              stroke="#1F2937"
+                              strokeWidth={0.5}
+                            />
+                          );
+                        }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -333,40 +478,95 @@ export default function BloodPressureReport() {
 
         <section className="rounded-2xl border bg-white p-5">
           <div className="mb-4 text-lg font-semibold text-gray-800">ภาพรวม</div>
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
+            <label className="flex flex-col gap-2 text-xs text-gray-600">
+              Year
+              <select
+                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={overviewYear}
+                onChange={(event) => setOverviewYear(event.target.value)}
+              >
+                {factoryId === 1 ? (
+                  <>
+                    <option value="2565">2565</option>
+                    <option value="2566">2566</option>
+                    <option value="2567">2567</option>
+                    <option value="2568">2568</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="2566">2566</option>
+                    <option value="2567">2567</option>
+                    <option value="2568">2568</option>
+                  </>
+                )}
+              </select>
+            </label>
+            <label className="flex flex-col gap-2 text-xs text-gray-600">
+              Department
+              <select
+                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={overviewDepartment}
+                onChange={(event) => setOverviewDepartment(event.target.value)}
+              >
+                <option value="">ทั้งหมด</option>
+                {overviewDepartmentOptions.map((department) => (
+                  <option key={department} value={department}>
+                    {department}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-2 text-xs text-gray-600">
+              Section
+              <select
+                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={overviewSection}
+                onChange={(event) => setOverviewSection(event.target.value)}
+              >
+                <option value="">ทั้งหมด</option>
+                {overviewSectionOptions.map((section) => (
+                  <option key={section} value={section}>
+                    {section}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <div className="grid gap-4">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="mb-4 text-lg font-semibold text-gray-800">
-                สรุปความดันโลหิต ปี 2568
+                สรุปความดันโลหิต ปี {overviewYear}
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                   <div className="text-xs text-emerald-700">ปกติ</div>
                   <div className="mt-2 text-2xl font-semibold text-emerald-900">
-                    {bpSummary2568.normal}
+                    {bpSummaryOverview.normal}
                   </div>
                 </div>
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                   <div className="text-xs text-red-700">ความดันสูง</div>
                   <div className="mt-2 text-2xl font-semibold text-red-900">
-                    {bpSummary2568.high}
+                    {bpSummaryOverview.high}
                   </div>
                 </div>
                 <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
                   <div className="text-xs text-yellow-700">ความดันต่ำ</div>
                   <div className="mt-2 text-2xl font-semibold text-yellow-900">
-                    {bpSummary2568.low}
+                    {bpSummaryOverview.low}
                   </div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                   <div className="text-xs text-gray-600">ไม่ได้รับการตรวจ</div>
                   <div className="mt-2 text-2xl font-semibold text-gray-900">
-                    {bpSummary2568.notTested}
+                    {bpSummaryOverview.notTested}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-xs text-slate-600">อื่นๆ</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">
-                    {bpSummary2568.other}
+                    {bpSummaryOverview.other}
                   </div>
                 </div>
               </div>
@@ -409,7 +609,7 @@ export default function BloodPressureReport() {
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex h-full items-center justify-center text-xs text-gray-500">
-                    ไม่มีข้อมูลกลุ่ม
+                    ไม่มีกลุ่มข้อมูล
                   </div>
                 )}
               </div>
@@ -426,3 +626,4 @@ export default function BloodPressureReport() {
     </div>
   );
 }
+
