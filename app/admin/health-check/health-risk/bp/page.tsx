@@ -16,7 +16,8 @@ import {
 
 type HealthRow = Record<string, unknown>;
 
-const BP_KEY = "ความดันโลหิต";
+const BP_KEY = "Blood Pressure";
+const BP_FALLBACK_KEYS = ["ความดันโลหิต"];
 const GROUP_FIELDS = [
   { label: "Division", key: "Division" },
   { label: "Department", key: "Department" },
@@ -34,6 +35,17 @@ const categorizeBp = (value: string) => {
     return "notTested";
   }
   return "other";
+};
+
+const getBpRawValue = (row: HealthRow | null) => {
+  if (!row) return "";
+  const primary = normalizeValue(row[BP_KEY]);
+  if (primary) return primary;
+  for (const key of BP_FALLBACK_KEYS) {
+    const fallback = normalizeValue(row[key]);
+    if (fallback) return fallback;
+  }
+  return "";
 };
 
 const bpCategoryLabel = (bucket: string) => {
@@ -63,6 +75,7 @@ export default function BloodPressureReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [factoryId, setFactoryId] = useState<1 | 2>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [selectedYear] = useState("2568");
   const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
@@ -72,24 +85,24 @@ export default function BloodPressureReport() {
     const load = async () => {
       try {
         setError(null);
-        const [res2568, res2567, res2566] = await Promise.all([
-          fetch("/data/final_2568.json", { cache: "no-store" }),
-          fetch("/data/final_2567.json", { cache: "no-store" }),
-          fetch("/data/final_2566.json", { cache: "no-store" }),
-        ]);
-        if (!res2568.ok || !res2567.ok || !res2566.ok) {
-          throw new Error("Failed to load one or more year datasets");
+        const resAll = await fetch(`/data/ALL/all.json`, { cache: "no-store" });
+        if (!resAll.ok) {
+          throw new Error("Failed to load dataset");
         }
-        const [data2568, data2567, data2566] = (await Promise.all([
-          res2568.json(),
-          res2567.json(),
-          res2566.json(),
-        ])) as [HealthRow[], HealthRow[], HealthRow[]];
+        const dataAll = (await resAll.json()) as HealthRow[];
+        const filtered = Array.isArray(dataAll)
+          ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
+          : [];
+        const rows2568 = filtered.filter((row) => String(row.Year) === "2568");
+        const rows2567 = filtered.filter((row) => String(row.Year) === "2567");
+        const rows2566 = filtered.filter((row) => String(row.Year) === "2566");
+        const rows2565 = filtered.filter((row) => String(row.Year) === "2565");
         if (active) {
           setRowsByYear({
-            "2568": Array.isArray(data2568) ? data2568 : [],
-            "2567": Array.isArray(data2567) ? data2567 : [],
-            "2566": Array.isArray(data2566) ? data2566 : [],
+            "2568": rows2568,
+            "2567": rows2567,
+            "2566": rows2566,
+            "2565": rows2565,
           });
         }
       } catch (err) {
@@ -106,7 +119,7 @@ export default function BloodPressureReport() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [factoryId]);
 
   const people = useMemo(() => {
     const baseRows = rowsByYear[selectedYear] ?? [];
@@ -133,19 +146,19 @@ export default function BloodPressureReport() {
       rowsByYear["2568"]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
       null;
     if (!row) return null;
-    const raw = normalizeValue(row[BP_KEY]);
+    const raw = getBpRawValue(row);
     const bucket = categorizeBp(raw);
     return { raw, bucket };
-  }, [rowsByYear, selectedEmpId]);
+  }, [rowsByYear, selectedEmpId, factoryId]);
 
   const bpTrend = useMemo(() => {
     if (!selectedEmpId) return [];
-    const years = ["2566", "2567", "2568"];
+    const years = factoryId === 1 ? ["2565", "2566", "2567", "2568"] : ["2566", "2567", "2568"];
     return years.map((year) => {
       const row =
         rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
         null;
-      const value = bpStatusValue(normalizeValue(row?.[BP_KEY]));
+      const value = bpStatusValue(getBpRawValue(row ?? null));
       return { year, value };
     });
   }, [rowsByYear, selectedEmpId]);
@@ -154,7 +167,7 @@ export default function BloodPressureReport() {
     const rows = rowsByYear["2568"] ?? [];
     const counts = { low: 0, normal: 0, high: 0, notTested: 0, other: 0 };
     rows.forEach((row) => {
-      const bucket = categorizeBp(normalizeValue(row[BP_KEY]));
+      const bucket = categorizeBp(getBpRawValue(row));
       counts[bucket] += 1;
     });
     return counts;
@@ -165,7 +178,7 @@ export default function BloodPressureReport() {
     const grouped = new Map<string, { low: number; normal: number; high: number; notTested: number; other: number }>();
     rows.forEach((row) => {
       const groupName = normalizeValue(row[selectedGroupKey]) || "Unspecified";
-      const bucket = categorizeBp(normalizeValue(row[BP_KEY]));
+      const bucket = categorizeBp(getBpRawValue(row));
       if (!grouped.has(groupName)) {
         grouped.set(groupName, { low: 0, normal: 0, high: 0, notTested: 0, other: 0 });
       }
@@ -188,6 +201,17 @@ export default function BloodPressureReport() {
             ค้นหาข้อมูลพนักงาน
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <label className="flex flex-col gap-2 text-sm text-gray-600 md:max-w-[180px]">
+              Factory
+              <select
+                className="h-11 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={factoryId}
+                onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2)}
+              >
+                <option value={1}>TS</option>
+                <option value={2}>TL</option>
+              </select>
+            </label>
             <label className="flex flex-col gap-2 text-sm text-gray-600 md:flex-1">
               SCG EmpID
               <select
@@ -282,13 +306,13 @@ export default function BloodPressureReport() {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={bpTrend}>
                       <XAxis dataKey="year" />
-                      <YAxis
-                        domain={[0, 1.2]}
-                        ticks={[0.2, 0.6, 1]}
-                        tickFormatter={(value) =>
-                          value >= 1 ? "สูง" : value >= 0.6 ? "ปกติ" : "ต่ำ"
-                        }
-                      />
+                        <YAxis
+                          domain={[0.1, 1.1]}
+                          ticks={[0.2, 0.6, 1]}
+                          tickFormatter={(value) =>
+                            value >= 1 ? "สูง" : value >= 0.6 ? "ปกติ" : "ต่ำ"
+                          }
+                        />
                       <Tooltip />
                       <Line
                         type="monotone"

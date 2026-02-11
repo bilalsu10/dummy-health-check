@@ -16,7 +16,7 @@ import {
 
 type HealthRow = Record<string, unknown>;
 
-const BMI_KEY = "ดัชนีมวลกาย";
+const BMI_KEY = "BMI";
 const GROUP_FIELDS = [
   { label: "Division", key: "Division" },
   { label: "Department", key: "Department" },
@@ -48,6 +48,7 @@ export default function BmiReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [factoryId, setFactoryId] = useState<1 | 2>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [selectedYear] = useState("2568");
   const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
@@ -57,24 +58,24 @@ export default function BmiReport() {
     const load = async () => {
       try {
         setError(null);
-        const [res2568, res2567, res2566] = await Promise.all([
-          fetch("/data/final_2568.json", { cache: "no-store" }),
-          fetch("/data/final_2567.json", { cache: "no-store" }),
-          fetch("/data/final_2566.json", { cache: "no-store" }),
-        ]);
-        if (!res2568.ok || !res2567.ok || !res2566.ok) {
-          throw new Error("Failed to load one or more year datasets");
+        const resAll = await fetch(`/data/ALL/all.json`, { cache: "no-store" });
+        if (!resAll.ok) {
+          throw new Error("Failed to load dataset");
         }
-        const [data2568, data2567, data2566] = (await Promise.all([
-          res2568.json(),
-          res2567.json(),
-          res2566.json(),
-        ])) as [HealthRow[], HealthRow[], HealthRow[]];
+        const dataAll = (await resAll.json()) as HealthRow[];
+        const filtered = Array.isArray(dataAll)
+          ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
+          : [];
+        const rows2568 = filtered.filter((row) => String(row.Year) === "2568");
+        const rows2567 = filtered.filter((row) => String(row.Year) === "2567");
+        const rows2566 = filtered.filter((row) => String(row.Year) === "2566");
+        const rows2565 = filtered.filter((row) => String(row.Year) === "2565");
         if (active) {
           setRowsByYear({
-            "2568": Array.isArray(data2568) ? data2568 : [],
-            "2567": Array.isArray(data2567) ? data2567 : [],
-            "2566": Array.isArray(data2566) ? data2566 : [],
+            "2568": rows2568,
+            "2567": rows2567,
+            "2566": rows2566,
+            "2565": rows2565,
           });
         }
       } catch (err) {
@@ -91,7 +92,7 @@ export default function BmiReport() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [factoryId]);
 
   const people = useMemo(() => {
     const baseRows = rowsByYear[selectedYear] ?? [];
@@ -114,15 +115,39 @@ export default function BmiReport() {
 
   const bmiTrend = useMemo(() => {
     if (!selectedEmpId) return [];
-    const years = ["2566", "2567", "2568"];
+    const years = factoryId === 1 ? ["2565", "2566", "2567", "2568"] : ["2566", "2567", "2568"];
     return years.map((year) => {
       const row =
         rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
         null;
       const value = parseBmiValue(row?.[BMI_KEY]);
-      return { year, value };
+      return { year, value: Number.isFinite(value) ? value : null };
     });
-  }, [rowsByYear, selectedEmpId]);
+  }, [rowsByYear, selectedEmpId, factoryId]);
+
+  const bmiTrendDomain = useMemo(() => {
+    const values = bmiTrend.map((item) => item.value).filter((value): value is number => Number.isFinite(value));
+    if (!values.length) return [0, 40] as [number, number];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const padding = 2;
+    const lower = Math.max(0, Math.floor(min - padding));
+    const upper = Math.ceil(max + padding);
+    return [lower, upper] as [number, number];
+  }, [bmiTrend]);
+
+  const renderTrendDot = (props: { cx?: number; cy?: number; payload?: { value?: number } }) => {
+    const { cx, cy, payload } = props;
+    const value = Number(payload?.value ?? NaN);
+    if (!Number.isFinite(value)) return null;
+    let fill = "#2563EB";
+    if (value > 29.9) {
+      fill = "#DC2626";
+    } else if (value > 24 || value < 18.5) {
+      fill = "#F97316";
+    }
+    return <circle cx={cx} cy={cy} r={5} fill={fill} stroke="#1F2937" strokeWidth={0.5} />;
+  };
 
   const selectedBmiSummary = useMemo(() => {
     if (!selectedEmpId) return null;
@@ -197,6 +222,17 @@ export default function BmiReport() {
             ค้นหาข้อมูลพนักงาน
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <label className="flex flex-col gap-2 text-sm text-gray-600 md:max-w-[180px]">
+              Factory
+              <select
+                className="h-11 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={factoryId}
+                onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2)}
+              >
+                <option value={1}>TS</option>
+                <option value={2}>TL</option>
+              </select>
+            </label>
             <label className="flex flex-col gap-2 text-sm text-gray-600 md:flex-1">
               SCG EmpID
               <select
@@ -306,16 +342,16 @@ export default function BmiReport() {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={bmiTrend}>
                         <XAxis dataKey="year" />
-                        <YAxis />
+                          <YAxis domain={bmiTrendDomain} />
                         <Tooltip />
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          name="BMI"
-                          stroke="#2563EB"
-                          strokeWidth={2}
-                          dot={{ r: 4 }}
-                        />
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            name="BMI"
+                            stroke="#2563EB"
+                            strokeWidth={2}
+                            dot={renderTrendDot}
+                          />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>

@@ -17,7 +17,8 @@ import {
 
 type HealthRow = Record<string, unknown>;
 
-const VISION_HEARING_KEYS = ["ตรวจสมรรถภาพการได้ยิน"];
+const VISION_HEARING_KEYS = ["Hearing Test"];
+const HEARING_KEY = VISION_HEARING_KEYS[0];
 
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
@@ -38,7 +39,13 @@ const parseHearingValues = (value: unknown) => {
     .filter((number) => Number.isFinite(number));
 };
 
-const YEAR_ORDER = ["2566", "2567", "2568"];
+const YEAR_ORDER_ALL = ["2565", "2566", "2567", "2568"];
+const YEAR_COLORS = {
+  "2568": "#B07C2D",
+  "2567": "#2563EB",
+  "2566": "#7C3AED",
+  "2565": "#0EA5E9",
+};
 
 const resolveHearingStatus = (values: number[]) => {
   if (!values.length) return "unknown";
@@ -50,6 +57,7 @@ export default function EyesReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [factoryId, setFactoryId] = useState<1 | 2>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [selectedYear] = useState("2568");
   const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
@@ -59,24 +67,24 @@ export default function EyesReport() {
     const load = async () => {
       try {
         setError(null);
-        const [res2568, res2567, res2566] = await Promise.all([
-          fetch("/data/final_2568.json", { cache: "no-store" }),
-          fetch("/data/final_2567.json", { cache: "no-store" }),
-          fetch("/data/final_2566.json", { cache: "no-store" }),
-        ]);
-        if (!res2568.ok || !res2567.ok || !res2566.ok) {
-          throw new Error("Failed to load one or more year datasets");
+        const resAll = await fetch(`/data/ALL/all.json`, { cache: "no-store" });
+        if (!resAll.ok) {
+          throw new Error("Failed to load dataset");
         }
-        const [data2568, data2567, data2566] = (await Promise.all([
-          res2568.json(),
-          res2567.json(),
-          res2566.json(),
-        ])) as [HealthRow[], HealthRow[], HealthRow[]];
+        const dataAll = (await resAll.json()) as HealthRow[];
+        const filtered = Array.isArray(dataAll)
+          ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
+          : [];
+        const rows2568 = filtered.filter((row) => String(row.Year) === "2568");
+        const rows2567 = filtered.filter((row) => String(row.Year) === "2567");
+        const rows2566 = filtered.filter((row) => String(row.Year) === "2566");
+        const rows2565 = filtered.filter((row) => String(row.Year) === "2565");
         if (active) {
           setRowsByYear({
-            "2568": Array.isArray(data2568) ? data2568 : [],
-            "2567": Array.isArray(data2567) ? data2567 : [],
-            "2566": Array.isArray(data2566) ? data2566 : [],
+            "2568": rows2568,
+            "2567": rows2567,
+            "2566": rows2566,
+            "2565": rows2565,
           });
         }
       } catch (err) {
@@ -93,7 +101,7 @@ export default function EyesReport() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [factoryId]);
 
   const people = useMemo(() => {
     const baseRows = rowsByYear[selectedYear] ?? [];
@@ -120,19 +128,22 @@ export default function EyesReport() {
     }
     const getRow = (year: string) =>
       rowsByYear[year]?.find((row) => normalizeValue(row.SCG_EmpID) === selectedEmpId) ?? null;
-    const values2568 = parseHearingValues(getRow("2568")?.["ตรวจสมรรถภาพการได้ยิน"]);
-    const values2567 = parseHearingValues(getRow("2567")?.["ตรวจสมรรถภาพการได้ยิน"]);
-    const values2566 = parseHearingValues(getRow("2566")?.["ตรวจสมรรถภาพการได้ยิน"]);
+    const values2568 = parseHearingValues(getRow("2568")?.[HEARING_KEY]);
+    const values2567 = parseHearingValues(getRow("2567")?.[HEARING_KEY]);
+    const values2566 = parseHearingValues(getRow("2566")?.[HEARING_KEY]);
+    const values2565 = parseHearingValues(getRow("2565")?.[HEARING_KEY]);
 
     const rightEar = {
       "2568": values2568.slice(0, 7),
       "2567": values2567.slice(0, 7),
       "2566": values2566.slice(0, 7),
+      "2565": values2565.slice(0, 7),
     };
     const leftEar = {
       "2568": values2568.slice(7, 14),
       "2567": values2567.slice(7, 14),
       "2566": values2566.slice(7, 14),
+      "2565": values2565.slice(7, 14),
     };
     return {
       right: HEARING_FREQ_LABELS.map((label, index) => ({
@@ -140,29 +151,32 @@ export default function EyesReport() {
         y2568: rightEar["2568"][index] ?? null,
         y2567: rightEar["2567"][index] ?? null,
         y2566: rightEar["2566"][index] ?? null,
+        y2565: rightEar["2565"][index] ?? null,
       })),
       left: HEARING_FREQ_LABELS.map((label, index) => ({
         name: label,
         y2568: leftEar["2568"][index] ?? null,
         y2567: leftEar["2567"][index] ?? null,
         y2566: leftEar["2566"][index] ?? null,
+        y2565: leftEar["2565"][index] ?? null,
       })),
     };
   }, [rowsByYear, selectedEmpId, selectedPerson]);
 
   const individualCategoryTrends = useMemo(() => {
     if (!selectedEmpId) return [];
+    const yearOrder = factoryId === 1 ? YEAR_ORDER_ALL : YEAR_ORDER_ALL.slice(1);
     return [
       { label: "Left ear low (500–3000)", indices: [7, 8, 9, 10] },
       { label: "Left ear high (4000–8000)", indices: [11, 12, 13] },
       { label: "Right ear low (500–3000)", indices: [0, 1, 2, 3] },
       { label: "Right ear high (4000–8000)", indices: [4, 5, 6] },
     ].map((category) => {
-      const data = YEAR_ORDER.map((year) => {
+      const data = yearOrder.map((year) => {
         const row =
           rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
           null;
-        const values = parseHearingValues(row?.["ตรวจสมรรถภาพการได้ยิน"]);
+        const values = parseHearingValues(row?.[HEARING_KEY]);
         const selected = category.indices.map((idx) => values[idx]).filter((val) => val != null);
         const status = resolveHearingStatus(selected as number[]);
         return {
@@ -195,6 +209,8 @@ export default function EyesReport() {
     };
   };
 
+  const show2565 = factoryId === 1;
+
   const buildGroupCounts = (
     rows: HealthRow[],
     groupKey: string,
@@ -204,7 +220,7 @@ export default function EyesReport() {
     const grouped = new Map<string, { normal: number; abnormal: number }>();
     rows.forEach((row) => {
       const groupName = normalizeValue(row[groupKey]) || "Unspecified";
-      const values = parseHearingValues(row["ตรวจสมรรถภาพการได้ยิน"]);
+      const values = parseHearingValues(row[HEARING_KEY]);
       if (!values.length) return;
       const selected = indices.map((idx) => values[idx]).filter((val) => Number.isFinite(val));
       if (!selected.length) return;
@@ -241,6 +257,17 @@ export default function EyesReport() {
             Find employee details
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <label className="flex flex-col gap-2 text-sm text-gray-600 md:max-w-[180px]">
+              Factory
+              <select
+                className="h-11 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={factoryId}
+                onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2)}
+              >
+                <option value={1}>TS</option>
+                <option value={2}>TL</option>
+              </select>
+            </label>
             <label className="flex flex-col gap-2 text-sm text-gray-600 md:max-w-sm md:flex-1">
               SCG EmpID
               <select
@@ -317,26 +344,36 @@ export default function EyesReport() {
                                 type="monotone"
                                 dataKey="y2568"
                                 name="2568"
-                                stroke="#B07C2D"
+                                stroke={YEAR_COLORS["2568"]}
                                 strokeWidth={2}
-                                dot={makeDot("#B07C2D")}
+                                dot={makeDot(YEAR_COLORS["2568"])}
                               />
                               <Line
                                 type="monotone"
                                 dataKey="y2567"
                                 name="2567"
-                                stroke="#2563EB"
+                                stroke={YEAR_COLORS["2567"]}
                                 strokeWidth={2}
-                                dot={makeDot("#2563EB")}
+                                dot={makeDot(YEAR_COLORS["2567"])}
                               />
                               <Line
                                 type="monotone"
                                 dataKey="y2566"
                                 name="2566"
-                                stroke="#7C3AED"
+                                stroke={YEAR_COLORS["2566"]}
                                 strokeWidth={2}
-                                dot={makeDot("#7C3AED")}
+                                dot={makeDot(YEAR_COLORS["2566"])}
                               />
+                              {show2565 && (
+                                <Line
+                                  type="monotone"
+                                  dataKey="y2565"
+                                  name="2565"
+                                  stroke={YEAR_COLORS["2565"]}
+                                  strokeWidth={2}
+                                  dot={makeDot(YEAR_COLORS["2565"])}
+                                />
+                              )}
                             </LineChart>
                           </ResponsiveContainer>
                         ) : (
@@ -367,26 +404,36 @@ export default function EyesReport() {
                                 type="monotone"
                                 dataKey="y2568"
                                 name="2568"
-                                stroke="#4C7A5A"
+                                stroke={YEAR_COLORS["2568"]}
                                 strokeWidth={2}
-                                dot={makeDot("#4C7A5A")}
+                                dot={makeDot(YEAR_COLORS["2568"])}
                               />
                               <Line
                                 type="monotone"
                                 dataKey="y2567"
                                 name="2567"
-                                stroke="#2563EB"
+                                stroke={YEAR_COLORS["2567"]}
                                 strokeWidth={2}
-                                dot={makeDot("#2563EB")}
+                                dot={makeDot(YEAR_COLORS["2567"])}
                               />
                               <Line
                                 type="monotone"
                                 dataKey="y2566"
                                 name="2566"
-                                stroke="#7C3AED"
+                                stroke={YEAR_COLORS["2566"]}
                                 strokeWidth={2}
-                                dot={makeDot("#7C3AED")}
+                                dot={makeDot(YEAR_COLORS["2566"])}
                               />
+                              {show2565 && (
+                                <Line
+                                  type="monotone"
+                                  dataKey="y2565"
+                                  name="2565"
+                                  stroke={YEAR_COLORS["2565"]}
+                                  strokeWidth={2}
+                                  dot={makeDot(YEAR_COLORS["2565"])}
+                                />
+                              )}
                             </LineChart>
                           </ResponsiveContainer>
                         ) : (

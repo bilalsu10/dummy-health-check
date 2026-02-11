@@ -16,7 +16,8 @@ import {
 
 type HealthRow = Record<string, unknown>;
 
-const VA_KEY = "ตรวจการมองเห็นระยะไกล";
+const VA_KEY = "VA";
+const VA_FALLBACK_KEYS = ["ตรวจการมองเห็นระยะไกล"];
 const GROUP_FIELDS = [
   { label: "Division", key: "Division" },
   { label: "Department", key: "Department" },
@@ -25,6 +26,17 @@ const GROUP_FIELDS = [
 
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
+
+const getVaRawValue = (row: HealthRow | null) => {
+  if (!row) return "";
+  const primary = normalizeValue(row[VA_KEY]);
+  if (primary) return primary;
+  for (const key of VA_FALLBACK_KEYS) {
+    const fallback = normalizeValue(row[key]);
+    if (fallback) return fallback;
+  }
+  return "";
+};
 
 const parseItems = (value: unknown) => {
   const raw = normalizeValue(value);
@@ -61,6 +73,7 @@ export default function EyesVaReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [factoryId, setFactoryId] = useState<1 | 2>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [selectedYear] = useState("2568");
   const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
@@ -70,24 +83,24 @@ export default function EyesVaReport() {
     const load = async () => {
       try {
         setError(null);
-        const [res2568, res2567, res2566] = await Promise.all([
-          fetch("/data/final_2568.json", { cache: "no-store" }),
-          fetch("/data/final_2567.json", { cache: "no-store" }),
-          fetch("/data/final_2566.json", { cache: "no-store" }),
-        ]);
-        if (!res2568.ok || !res2567.ok || !res2566.ok) {
-          throw new Error("Failed to load one or more year datasets");
+        const resAll = await fetch(`/data/ALL/all.json`, { cache: "no-store" });
+        if (!resAll.ok) {
+          throw new Error("Failed to load dataset");
         }
-        const [data2568, data2567, data2566] = (await Promise.all([
-          res2568.json(),
-          res2567.json(),
-          res2566.json(),
-        ])) as [HealthRow[], HealthRow[], HealthRow[]];
+        const dataAll = (await resAll.json()) as HealthRow[];
+        const filtered = Array.isArray(dataAll)
+          ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
+          : [];
+        const rows2568 = filtered.filter((row) => String(row.Year) === "2568");
+        const rows2567 = filtered.filter((row) => String(row.Year) === "2567");
+        const rows2566 = filtered.filter((row) => String(row.Year) === "2566");
+        const rows2565 = filtered.filter((row) => String(row.Year) === "2565");
         if (active) {
           setRowsByYear({
-            "2568": Array.isArray(data2568) ? data2568 : [],
-            "2567": Array.isArray(data2567) ? data2567 : [],
-            "2566": Array.isArray(data2566) ? data2566 : [],
+            "2568": rows2568,
+            "2567": rows2567,
+            "2566": rows2566,
+            "2565": rows2565,
           });
         }
       } catch (err) {
@@ -104,7 +117,7 @@ export default function EyesVaReport() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [factoryId]);
 
   const people = useMemo(() => {
     const baseRows = rowsByYear[selectedYear] ?? [];
@@ -127,30 +140,30 @@ export default function EyesVaReport() {
 
   const vaItems = useMemo(() => {
     if (!selectedPerson) return [];
-    return parseItems(selectedPerson[VA_KEY]);
+    return parseItems(getVaRawValue(selectedPerson));
   }, [selectedPerson]);
 
   const vaResult = vaItems[0] ?? "";
 
   const vaTrend = useMemo(() => {
     if (!selectedEmpId) return [];
-    const years = ["2566", "2567", "2568"];
+    const years = factoryId === 1 ? ["2565", "2566", "2567", "2568"] : ["2566", "2567", "2568"];
     return years.map((year) => {
       const row =
         rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
         null;
-      const items = parseItems(row?.[VA_KEY]);
+      const items = parseItems(getVaRawValue(row ?? null));
       const status = getVaStatusValue(items[0] ?? "");
       return { year, value: status };
     });
-  }, [rowsByYear, selectedEmpId]);
+  }, [rowsByYear, selectedEmpId, factoryId]);
 
   const groupChart = useMemo(() => {
     const rows = rowsByYear[selectedYear] ?? [];
     const grouped = new Map<string, { normal: number; abnormal: number }>();
     rows.forEach((row) => {
       const groupName = normalizeValue(row[selectedGroupKey]) || "Unspecified";
-      const status = getVisionStatus(normalizeValue(row[VA_KEY]));
+      const status = getVisionStatus(getVaRawValue(row));
       if (status === "unknown") return;
       if (!grouped.has(groupName)) {
         grouped.set(groupName, { normal: 0, abnormal: 0 });
@@ -180,6 +193,17 @@ export default function EyesVaReport() {
             Find employee details
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <label className="flex flex-col gap-2 text-sm text-gray-600 md:max-w-[180px]">
+              Factory
+              <select
+                className="h-11 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={factoryId}
+                onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2)}
+              >
+                <option value={1}>TS</option>
+                <option value={2}>TL</option>
+              </select>
+            </label>
             <label className="flex flex-col gap-2 text-sm text-gray-600 md:flex-1">
               SCG EmpID
               <select

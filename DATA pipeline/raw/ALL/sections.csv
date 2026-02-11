@@ -1,0 +1,208 @@
+﻿section_id,section_name,department_id
+1,-,1
+2,BIM & Customer Value Creation - Lower,1
+3,Smart Store,1
+4,-,1.0
+5,CAD,10.0
+6,-,100.0
+7,-,101.0
+8,-,102.0
+9,-,103.0
+10,-,104.0
+11,CS Operation,11.0
+12,Construction Management,11.0
+13,Design and Engineering,11.0
+14,Drawing and Eco-System Management,11.0
+15,Cement Plant - TS,12.0
+16,Industry 4.0,12.0
+17,Mining & Circularity Operation - TS,12.0
+18,Operations - TS,12.0
+19,พัสดุ,12.0
+20,Co-Creation and Operation Development,13.0
+21,Construction Solution System & Process,14.0
+22,Contractor Management,15.0
+23,0,16.0
+24,Grey Cement - STS,16.0
+25,Digital Transformation,17.0
+26,E2E Value Creation,17.0
+27,Value-Based Customer Creation,17.0
+28,-,18.0
+29,Digital Transformation,18.0
+30,IT Share Service,18.0
+31,Store Management,18.0
+32,E2E Supply Chain,19.0
+33,-,2.0
+34,-,20.0
+35,Green Fuel Sourcing - South,21.0
+36,Human Capital,22.0
+37,Community & Government Relation,23.0
+38,License to Operate,23.0
+39,Safety & Environment,23.0
+40,-,24.0
+41,Industry 4.0,25.0
+42,MD Office,25.0
+43,บริการงานจ้างเหมา,25.0
+44,พัสดุ,25.0
+45,เทคโนโลยีสารสนเทศ,25.0
+46,-,26.0
+47,Alternative Fuel & Solar,26.0
+48,Cement Mill & Packer & Mortar,26.0
+49,Cement Mill & Packer & Mortar & RDF,26.0
+50,Civil,26.0
+51,Customer Design Solution,26.0
+52,Kiln,26.0
+53,Kiln & WHG,26.0
+54,Lignite Mill & Alternative Fuel,26.0
+55,Lignite Mill & WHG,26.0
+56,Measurement and Analysis,26.0
+57,Project Execution,26.0
+58,Raw Material & Raw Mill,26.0
+59,Workshop,26.0
+60,Maintenance Overhaul and Consultancy - Electrical,27.0
+61,Maintenance Overhaul and Consultancy - Mechanical,27.0
+62,Maintenance Overhaul and Consultancy - Refractory,27.0
+63,Maintenance Repair Overhaul - STS,27.0
+64,Maintenance Repair Overhaul - South,27.0
+65,Measurement and Analysis,27.0
+66,Plant Maintenance,27.0
+67,Maintenance Overhaul and Consultancy,28.0
+68,Maintenance Repair Overhaul - South,28.0
+69,Plant Maintenance,28.0
+70,MRO - TS,29.0
+71,0,3.0
+72,Maintenance Strategic Management,30.0
+73,Maintenance Workshop Service,31.0
+74,-,32.0
+75,Fuel and Biomass Preparation,32.0
+76,Mine Maintenance,32.0
+77,Mine Operation,32.0
+78,Mine Planning And Rehabilitation,32.0
+79,Mine Processing,32.0
+80,Raw Material Preparation,32.0
+81,Smart Mining and Service Solution,32.0
+82,Waste Preparation,32.0
+83,New Business,33.0
+84,-,34.0
+85,-,35.0
+86,-,36.0
+87,Design Solution,37.0
+88,Design Solution and Execution -South,37.0
+89,AFR,38.0
+90,Biomass,38.0
+91,Fuel and AFR,38.0
+92,Fuel and Export,38.0
+93,Operations,38.0
+94,Quality Assurance,38.0
+95,Waste Heat Generator STS,38.0
+96,บรรจุและจ่ายซีเมนต์,38.0
+97,บริการลูกค้า,38.0
+98,ผลิตซีเมนต์,38.0
+99,ผลิตถุงกระดาษ,38.0
+100,ผลิตถุงปูนซีเมนต์,38.0
+101,ผลิตปูนเม็ด TS4,38.0
+102,ผลิตปูนเม็ด TS5,38.0
+103,ผลิตปูนเม็ด TS6,38.0
+104,ผลิตมอร์ตาร์,38.0
+105,ผลิตไฟฟ้า,38.0
+106,ส่งเสริมการผลิต,38.0
+107,-,39.0
+108,Cement Mill,39.0
+109,Clinkering - TS4,39.0
+110,Clinkering - TS5,39.0
+111,Clinkering - TS6,39.0
+112,Dispatching and Customer Service,39.0
+113,Mortar,39.0
+114,Paper Bag,39.0
+115,ผลิตถุงปูนซีเมนต์,39.0
+116,Alternative Fuel Sourcing - TS,4.0
+117,-,40.0
+118,Ecosystem,40.0
+119,Human Capabilities & Engagement,40.0
+120,Human Resources Management,40.0
+121,-,41.0
+122,-,42.0
+123,Lab Automation,42.0
+124,QA Clinker & Cement,42.0
+125,Smart Store,42.0
+126,Quarry,43.0
+127,จัดหาและเตรียมวัตถุดิบ,43.0
+128,จัดเตรียมวัตถุดิบ,43.0
+129,ซ่อมบำรุงจักรกลหนัก,43.0
+130,ผลิตหินก่อนย่อย,43.0
+131,ผลิตหินย่อยและหินก่อสร้าง,43.0
+132,วางแผนพัฒนาและฟื้นฟูเหมือง,43.0
+133,วางแผนและพัฒนาเหมือง,43.0
+134,-,44.0
+135,Shutdown - Mechanical,44.0
+136,-,45.0
+137,-,46.0
+138,Maintenance Reliable Service,47.0
+139,Smart Maintenance Service,47.0
+140,-,48.0
+141,Autonomous Maintenance,48.0
+142,Industry 4.0,48.0
+143,Autonomous Maintenance,49.0
+144,Industry 4.0,49.0
+145,LAB TS,5.0
+146,-,50.0
+147,South Chain,51.0
+148,Strategic People Management,52.0
+149,Supply Chain and Logistic Management,53.0
+150,-,54.0
+151,ESG,54.0
+152,License to Operate,54.0
+153,-,55.0
+154,ESG,55.0
+155,License to Operate,55.0
+156,Construction Solutions,56.0
+157,Customer Value Creation,56.0
+158,Value-Based Co-Creation,57.0
+159,-,58
+160,-,58.0
+161,-,59.0
+162,Autonomous Maintenance,6.0
+163,-,60.0
+164,-,61.0
+165,-,62.0
+166,-,63.0
+167,-,64.0
+168,-,65.0
+169,-,66.0
+170,-,67.0
+171,-,68.0
+172,-,69.0
+173,BSE - CSC,7.0
+174,-,70.0
+175,-,71.0
+176,-,72.0
+177,-,73.0
+178,-,74.0
+179,-,75.0
+180,-,76.0
+181,-,77.0
+182,-,78.0
+183,-,79.0
+184,BSE Operation - STS,8.0
+185,Facility Management,8.0
+186,Security Management,8.0
+187,-,80.0
+188,-,81.0
+189,-,82.0
+190,-,83.0
+191,-,84.0
+192,-,85.0
+193,-,86.0
+194,-,87.0
+195,-,88.0
+196,-,89.0
+197,BSE South Chain,9.0
+198,-,90.0
+199,-,91.0
+200,-,92.0
+201,-,93.0
+202,-,94.0
+203,-,95.0
+204,-,96.0
+205,-,97.0
+206,-,98.0
+207,-,99.0

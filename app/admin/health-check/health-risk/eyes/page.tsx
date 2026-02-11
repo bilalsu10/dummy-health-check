@@ -16,7 +16,7 @@ import {
 
 type HealthRow = Record<string, unknown>;
 
-const VISION_KEY = "ตรวจสายตาทางอาชีวอนามัย";
+const VISION_KEY = "Occupational Vision Exam";
 const GROUP_FIELDS = [
   { label: "Division", key: "Division" },
   { label: "Department", key: "Department" },
@@ -70,6 +70,7 @@ export default function EyesReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [factoryId, setFactoryId] = useState<1 | 2>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [selectedYear] = useState("2568");
   const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
@@ -79,24 +80,24 @@ export default function EyesReport() {
     const load = async () => {
       try {
         setError(null);
-        const [res2568, res2567, res2566] = await Promise.all([
-          fetch("/data/final_2568.json", { cache: "no-store" }),
-          fetch("/data/final_2567.json", { cache: "no-store" }),
-          fetch("/data/final_2566.json", { cache: "no-store" }),
-        ]);
-        if (!res2568.ok || !res2567.ok || !res2566.ok) {
-          throw new Error("Failed to load one or more year datasets");
+        const resAll = await fetch(`/data/ALL/all.json`, { cache: "no-store" });
+        if (!resAll.ok) {
+          throw new Error("Failed to load dataset");
         }
-        const [data2568, data2567, data2566] = (await Promise.all([
-          res2568.json(),
-          res2567.json(),
-          res2566.json(),
-        ])) as [HealthRow[], HealthRow[], HealthRow[]];
+        const dataAll = (await resAll.json()) as HealthRow[];
+        const filtered = Array.isArray(dataAll)
+          ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
+          : [];
+        const rows2568 = filtered.filter((row) => String(row.Year) === "2568");
+        const rows2567 = filtered.filter((row) => String(row.Year) === "2567");
+        const rows2566 = filtered.filter((row) => String(row.Year) === "2566");
+        const rows2565 = filtered.filter((row) => String(row.Year) === "2565");
         if (active) {
           setRowsByYear({
-            "2568": Array.isArray(data2568) ? data2568 : [],
-            "2567": Array.isArray(data2567) ? data2567 : [],
-            "2566": Array.isArray(data2566) ? data2566 : [],
+            "2568": rows2568,
+            "2567": rows2567,
+            "2566": rows2566,
+            "2565": rows2565,
           });
         }
       } catch (err) {
@@ -113,7 +114,7 @@ export default function EyesReport() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [factoryId]);
 
   const people = useMemo(() => {
     const baseRows = rowsByYear[selectedYear] ?? [];
@@ -164,7 +165,7 @@ export default function EyesReport() {
 
   const individualTrends = useMemo(() => {
     if (!selectedEmpId) return [];
-    const years = ["2566", "2567", "2568"];
+    const years = factoryId === 1 ? ["2565", "2566", "2567", "2568"] : ["2566", "2567", "2568"];
     const resolveStatus = (values: string[]) => {
       if (values.some((value) => getVisionStatus(value) === "abnormal")) return 1;
       if (values.some((value) => getVisionStatus(value) === "normal")) return 0.2;
@@ -182,7 +183,7 @@ export default function EyesReport() {
         other: resolveStatus(values.slice(11, 14)),
       };
     });
-  }, [rowsByYear, selectedEmpId]);
+  }, [rowsByYear, selectedEmpId, factoryId]);
 
   const buildGroupChart = (indices: number[]) => {
     const rows = rowsByYear[selectedYear] ?? [];
@@ -239,6 +240,17 @@ export default function EyesReport() {
             Find employee details
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <label className="flex flex-col gap-2 text-sm text-gray-600 md:max-w-[180px]">
+              Factory
+              <select
+                className="h-11 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={factoryId}
+                onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2)}
+              >
+                <option value={1}>TS</option>
+                <option value={2}>TL</option>
+              </select>
+            </label>
             <label className="flex flex-col gap-2 text-sm text-gray-600 md:max-w-sm md:flex-1">
               SCG EmpID
               <select

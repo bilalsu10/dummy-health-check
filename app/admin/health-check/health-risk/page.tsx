@@ -30,8 +30,8 @@ type TestDatum = {
   other: number;
 };
 
-const BMI_KEY = "ดัชนีมวลกาย";
-const BP_KEY = "ความดันโลหิต";
+const BMI_KEY = "BMI";
+const BP_KEY = "Blood Pressure";
 
 const DEMOGRAPHICS_KEYS = [
   "RowNo",
@@ -46,51 +46,59 @@ const DEMOGRAPHICS_KEYS = [
   "Division",
 ];
 
-const VITALS_KEYS = ["ดัชนีมวลกาย", "ความดันโลหิต", "ตรวจน้ำตาลในเลือด"];
+const VITALS_KEYS = ["BMI", "Blood Pressure", "Blood Glucose"];
 
-const VISION_HEARING_KEYS = [
-  "ตรวจสายตาทางอาชีวอนามัย",
-  "ตรวจการมองเห็นระยะไกล",
-  "ตรวจสมรรถภาพการได้ยิน",
-];
+const VISION_HEARING_KEYS = ["Occupational Vision Exam", "VA", "Hearing Test"];
 
-const LAB_CHEMISTRY_KEYS = [
-  "ตรวจการทำงานของตับ",
-  "ตรวจการทำงานของไต",
-  "ตรวจกรดยูริคในเลือด",
-  "สารบ่งชี้มะเร็งต่อมลูกหมากในเลือด",
-];
+const LAB_CHEMISTRY_KEYS = ["Liver Function", "Kidney Function", "Uric Acid", "PSA (Prostate Specific Antigen)"];
 
-const HEMATOLOGY_KEYS = ["ตรวจความสมบูรณ์ของเม็ดเลือด"];
+const HEMATOLOGY_KEYS = ["CBC"];
 
-const STOOL_KEYS = ["ตรวจอุจจาระ"];
+const STOOL_KEYS = ["Stool Exam"];
 
-const IMAGING_FUNCTIONAL_KEYS = [
-  "ตรวจคลื่นไฟฟ้าหัวใจ",
-  "ตรวจสมรรถภาพปอด",
-  "ตรวจเอ็กซเรย์ปอด",
-];
+const IMAGING_FUNCTIONAL_KEYS = ["EKG", "Lung Function", "Chest X-ray"];
 
 const URINE_KEYS = [
-  "ตรวจปัสสาวะสมบูรณ์แบบ",
-  "ตรวจสารหนูในปัสสาวะ",
-  "ตรวจสารอะซิโตนในปัสสาวะ",
-  "ตรวจสารปรอทในปัสสาวะ",
-  "ตรวจสารโทลูอีนในปัสสาวะ",
-  "ตรวจสารไซลีนในปัสสาวะ",
-  "ตรวจสารเมทิล เอทิล คีโตนในปัสสาวะ",
-  "ตรวจสารฟีนอลในปัสสาวะ",
-  "ตรวจสารเสพติดในปัสสาวะ",
+  "Urinalysis",
+  "Urine Arsenic",
+  "Urine Acetone",
+  "Urine Mercury",
+  "Urine Toluene",
+  "Urine Xylene",
+  "Urine Methyl Ethyl Ketone",
+  "Urine Phenol",
+  "Amphetamine",
 ];
 
-const TOXIN_BLOOD_KEYS = ["ตรวจสารตะกั่วในเลือด", "ตรวจสารแคดเมียมในเลือด"];
+const TOXIN_BLOOD_KEYS = ["Blood Lead", "Blood Cadmium"];
 
 const ITEM_LINKS: Record<string, string> = {
-  "ตรวจสมรรถภาพการได้ยิน": "/admin/health-check/health-risk/ear",
-  "ดัชนีมวลกาย": "/admin/health-check/health-risk/bmi",
-  "ความดันโลหิต": "/admin/health-check/health-risk/bp",
-  "ตรวจสายตาทางอาชีวอนามัย": "/admin/health-check/health-risk/eyes",
-  "ตรวจการมองเห็นระยะไกล": "/admin/health-check/health-risk/eyes-va",
+  "Hearing Test": "/admin/health-check/health-risk/ear",
+  "BMI": "/admin/health-check/health-risk/bmi",
+  "Blood Pressure": "/admin/health-check/health-risk/bp",
+  "Blood Glucose": "/admin/health-check/health-risk/blood-glucose",
+  "Occupational Vision Exam": "/admin/health-check/health-risk/eyes",
+  "VA": "/admin/health-check/health-risk/eyes-va",
+  "Liver Function": "/admin/health-check/health-risk/liver-function",
+  "Kidney Function": "/admin/health-check/health-risk/kidney-function",
+  "Uric Acid": "/admin/health-check/health-risk/uric-acid",
+  "PSA (Prostate Specific Antigen)": "/admin/health-check/health-risk/psa",
+  "Amphetamine": "/admin/health-check/health-risk/amphetamine",
+  "Blood Lead": "/admin/health-check/health-risk/blood-lead",
+  "Blood Cadmium": "/admin/health-check/health-risk/blood-cadmium",
+  "Urinalysis": "/admin/health-check/health-risk/urinalysis",
+  "Urine Arsenic": "/admin/health-check/health-risk/arsenic",
+  "Urine Acetone": "/admin/health-check/health-risk/urine-acetone",
+  "Urine Mercury": "/admin/health-check/health-risk/urine-mercury",
+  "Urine Toluene": "/admin/health-check/health-risk/urine-toluene",
+  "Urine Xylene": "/admin/health-check/health-risk/urine-xylene",
+  "Urine Methyl Ethyl Ketone": "/admin/health-check/health-risk/urine-methyl-ethyl-ketone",
+  "Urine Phenol": "/admin/health-check/health-risk/urine-phenol",
+  "CBC": "/admin/health-check/health-risk/cbc",
+  "EKG": "/admin/health-check/health-risk/ekg",
+  "Lung Function": "/admin/health-check/health-risk/lung-function",
+  "Stool Exam": "/admin/health-check/health-risk/stool",
+  "Chest X-ray": "/admin/health-check/health-risk/chest-xray",
 };
 
 
@@ -106,10 +114,10 @@ const GROUPS = [
 ];
 
 const TEST_COLUMNS: Array<{ key: string; label: string }> = [
-  { key: "ตรวจคลื่นไฟฟ้าหัวใจ", label: "ECG" },
-  { key: "ตรวจสมรรถภาพปอด", label: "Lung" },
-  { key: "ตรวจเอ็กซเรย์ปอด", label: "Chest X-ray" },
-  { key: "ตรวจปัสสาวะสมบูรณ์แบบ", label: "Urinalysis" },
+  { key: "EKG", label: "EKG" },
+  { key: "Lung Function", label: "Lung Function" },
+  { key: "Chest X-ray", label: "Chest X-ray" },
+  { key: "Urinalysis", label: "Urinalysis" },
 ];
 
 const PIE_COLORS = ["#4C7A5A", "#B94A48", "#B07C2D", "#6B7280"];
@@ -175,6 +183,7 @@ export default function RiskReport() {
   const [rows, setRows] = useState<HealthRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [factoryId, setFactoryId] = useState<1 | 2>(1);
 
 
   useEffect(() => {
@@ -182,13 +191,18 @@ export default function RiskReport() {
     const load = async () => {
       try {
         setError(null);
-        const response = await fetch("/data/final_2568.json", { cache: "no-store" });
+        const response = await fetch(`/data/ALL/all.json`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Failed to load data (${response.status} ${response.statusText})`);
         }
-        const data = (await response.json()) as HealthRow[];
+        const dataAll = (await response.json()) as HealthRow[];
+        const filtered = Array.isArray(dataAll)
+          ? dataAll.filter(
+              (row) => Number(row.FactoryId) === factoryId && String(row.Year) === "2568",
+            )
+          : [];
         if (active) {
-          setRows(Array.isArray(data) ? data : []);
+          setRows(filtered);
         }
       } catch (err) {
         if (active) {
@@ -204,7 +218,7 @@ export default function RiskReport() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [factoryId]);
 
   const totals = useMemo(() => {
     return {
@@ -236,6 +250,17 @@ export default function RiskReport() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="mx-auto flex max-w-6xl flex-col gap-6 pt-18 pb-8">
+        <section className="flex items-center justify-between rounded-2xl border bg-white px-5 py-4">
+          <div className="text-sm font-semibold text-gray-700">Factory</div>
+          <select
+            className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+            value={factoryId}
+            onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2)}
+          >
+            <option value={1}>TS</option>
+            <option value={2}>TL</option>
+          </select>
+        </section>
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-2xl border bg-white p-5">
             <div className="text-base font-semibold uppercase">Employees</div>
