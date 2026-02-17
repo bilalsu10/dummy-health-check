@@ -26,6 +26,13 @@ type TestResultPageProps = {
   backLabel?: string;
 };
 
+const getYearsForFactory = (factoryId: number) => {
+  if (factoryId === 1) return ["2565", "2566", "2567", "2568"];
+  if (factoryId === 2) return ["2566", "2567", "2568"];
+  if (factoryId === 3) return ["2564", "2565", "2566", "2567", "2568"];
+  return ["2568"];
+};
+
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
 
@@ -41,6 +48,8 @@ const NUMERIC_THRESHOLDS: Record<string, number> = {
 const PIE_COLORS: Record<string, string> = {
   normal: "#16A34A",
   abnormal: "#DC2626",
+  high: "#DC2626",
+  low: "#F59E0B",
   notTested: "#6B7280",
   other: "#94A3B8",
 };
@@ -75,6 +84,19 @@ const parseNumeric = (value: string) => {
 
 const categorizeNormalAbnormal = (value: string, testKey: string) => {
   if (isNotTested(value)) return "notTested";
+  if (testKey === "Blood Pressure") {
+    if (value.includes("ความดันโลหิตสูง") || value.includes("สูง")) return "high";
+    if (value.includes("ความดันโลหิตต่ำ") || value.includes("ต่ำ")) return "low";
+    if (value.includes("ความดันโลหิตปกติ") || value.includes("ปกติ")) return "normal";
+    return "other";
+  }
+  if (testKey === "BMI") {
+    const numeric = parseNumeric(value);
+    if (numeric === null) return "other";
+    if (numeric < 18.5) return "low";
+    if (numeric > 22.99) return "high";
+    return "normal";
+  }
   const threshold = NUMERIC_THRESHOLDS[testKey];
   if (threshold !== undefined) {
     const numeric = parseNumeric(value);
@@ -92,6 +114,10 @@ const categoryLabel = (bucket: string) => {
   switch (bucket) {
     case "normal":
       return "ปกติ";
+    case "high":
+      return "ความดันสูง";
+    case "low":
+      return "ความดันต่ำ";
     case "abnormal":
       return "ผิดปกติ";
     case "notTested":
@@ -102,7 +128,13 @@ const categoryLabel = (bucket: string) => {
 };
 
 const categoryLabelFromValue = (value: string, bucket: string) => {
+  if (bucket === "high" && value.includes("ความดัน")) return "ความดันโลหิตสูง";
+  if (bucket === "low" && value.includes("ความดัน")) return "ความดันโลหิตต่ำ";
+  if (bucket === "high") return "สูงกว่าเกณฑ์ปกติ";
+  if (bucket === "low") return "ต่ำกว่าเกณฑ์ปกติ";
   if (bucket === "abnormal") {
+    if (value.includes("ความดันโลหิตสูง")) return "ความดันโลหิตสูง";
+    if (value.includes("ความดันโลหิตต่ำ")) return "ความดันโลหิตต่ำ";
     if (value.includes("สูงกว่าปกติ")) return "สูงกว่าปกติ";
     if (value.includes("ต่ำกว่าปกติ")) return "ต่ำกว่าปกติ";
   }
@@ -110,7 +142,14 @@ const categoryLabelFromValue = (value: string, bucket: string) => {
 };
 
 const trendValue = (value: string, testKey: string) => {
-  if (testKey === "Blood Glucose") {
+  if (testKey === "Blood Pressure") {
+    const bucket = categorizeNormalAbnormal(value, testKey);
+    if (bucket === "low") return 0.2;
+    if (bucket === "normal") return 0.6;
+    if (bucket === "high") return 1;
+    return null;
+  }
+  if (testKey === "Blood Glucose" || testKey === "BMI") {
     const numeric = parseNumeric(value);
     return numeric ?? null;
   }
@@ -170,15 +209,42 @@ export default function TestResultPage({
   fallbackKeys = [],
   backLabel = "Health Risk",
 }: TestResultPageProps) {
+  const isBloodPressure = testKey === "Blood Pressure";
+  const isBMI = testKey === "BMI";
+  const categorySeries = isBloodPressure
+    ? [
+        { key: "normal", name: "ปกติ" },
+        { key: "high", name: "ความดันสูง" },
+        { key: "low", name: "ความดันต่ำ" },
+        { key: "notTested", name: "ไม่ได้รับการตรวจ" },
+        { key: "other", name: "อื่นๆ" },
+      ]
+    : isBMI
+      ? [
+          { key: "normal", name: "ปกติ" },
+          { key: "high", name: "สูงกว่าเกณฑ์ปกติ" },
+          { key: "low", name: "ต่ำกว่าเกณฑ์ปกติ" },
+          { key: "notTested", name: "ไม่ได้รับการตรวจ" },
+          { key: "other", name: "อื่นๆ" },
+        ]
+    : [
+        { key: "normal", name: "ปกติ" },
+        { key: "abnormal", name: "ผิดปกติ" },
+        { key: "notTested", name: "ไม่ได้รับการตรวจ" },
+        { key: "other", name: "อื่นๆ" },
+      ];
+
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [factoryId, setFactoryId] = useState<1 | 2>(1);
+  const [factoryId, setFactoryId] = useState<number>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [selectedYear, setSelectedYear] = useState("2568");
   const [overviewYear, setOverviewYear] = useState("2568");
   const [overviewDepartment, setOverviewDepartment] = useState("");
   const [overviewSection, setOverviewSection] = useState("");
+  const [overviewDepartmentSearch, setOverviewDepartmentSearch] = useState("");
+  const [overviewSectionSearch, setOverviewSectionSearch] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -197,12 +263,14 @@ export default function TestResultPage({
         const rows2567 = filtered.filter((row) => String(row.Year) === "2567");
         const rows2566 = filtered.filter((row) => String(row.Year) === "2566");
         const rows2565 = filtered.filter((row) => String(row.Year) === "2565");
+        const rows2564 = filtered.filter((row) => String(row.Year) === "2564");
         if (active) {
           setRowsByYear({
             "2568": rows2568,
             "2567": rows2567,
             "2566": rows2566,
             "2565": rows2565,
+            "2564": rows2564,
           });
         }
       } catch (err) {
@@ -223,25 +291,27 @@ export default function TestResultPage({
 
   useEffect(() => {
     setSelectedEmpId("");
-    setSelectedYear("2568");
+    const years = getYearsForFactory(factoryId);
+    setSelectedYear(years[years.length - 1] ?? "2568");
+    setOverviewYear(years[years.length - 1] ?? "2568");
   }, [factoryId]);
 
   useEffect(() => {
     setOverviewDepartment("");
     setOverviewSection("");
+    setOverviewDepartmentSearch("");
+    setOverviewSectionSearch("");
   }, [factoryId, overviewYear]);
 
   useEffect(() => {
     setOverviewSection("");
+    setOverviewSectionSearch("");
   }, [overviewDepartment]);
 
-  const individualYears = useMemo(
-    () => (factoryId === 1 ? ["2565", "2566", "2567", "2568"] : ["2566", "2567", "2568"]),
-    [factoryId],
-  );
+  const individualYears = useMemo(() => getYearsForFactory(factoryId), [factoryId]);
 
   const people = useMemo(() => {
-    const merged = new Map<string, { empId: string; name: string; department: string }>();
+    const merged = new Map<string, { empId: string; name: string; department: string; section: string }>();
     individualYears.forEach((year) => {
       (rowsByYear[year] ?? []).forEach((row) => {
         const empId = normalizeValue(row.SCG_EmpID);
@@ -251,6 +321,7 @@ export default function TestResultPage({
             empId,
             name: normalizeValue(row.Name),
             department: normalizeValue(row.Department),
+            section: normalizeValue(row.Section),
           });
         }
       });
@@ -293,8 +364,7 @@ export default function TestResultPage({
 
   const trend = useMemo(() => {
     if (!selectedEmpId) return [];
-    const years = ["2565", "2566", "2567", "2568"];
-    return years.map((year) => {
+    return individualYears.map((year) => {
       const row =
         rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
         null;
@@ -310,7 +380,7 @@ export default function TestResultPage({
         abnormalValue: bucket === "abnormal" ? value : null,
       };
     });
-  }, [rowsByYear, selectedEmpId, testKey, fallbackKeys]);
+  }, [rowsByYear, selectedEmpId, testKey, fallbackKeys, individualYears]);
 
   const overviewRowsYear = useMemo(() => rowsByYear[overviewYear] ?? [], [rowsByYear, overviewYear]);
 
@@ -321,8 +391,14 @@ export default function TestResultPage({
           .map((row) => normalizeValue(row.Department))
           .filter((value) => value && value !== "-"),
       ),
-    ).sort((a, b) => a.localeCompare(b));
-  }, [overviewRowsYear]);
+    )
+      .sort((a, b) => a.localeCompare(b))
+      .filter((department) =>
+        overviewDepartmentSearch
+          ? department.toLowerCase().includes(overviewDepartmentSearch.trim().toLowerCase())
+          : true,
+      );
+  }, [overviewRowsYear, overviewDepartmentSearch]);
 
   const overviewSectionOptions = useMemo(() => {
     return Array.from(
@@ -334,8 +410,14 @@ export default function TestResultPage({
           .map((row) => normalizeValue(row.Section))
           .filter((value) => value && value !== "-"),
       ),
-    ).sort((a, b) => a.localeCompare(b));
-  }, [overviewRowsYear, overviewDepartment]);
+    )
+      .sort((a, b) => a.localeCompare(b))
+      .filter((section) =>
+        overviewSectionSearch
+          ? section.toLowerCase().includes(overviewSectionSearch.trim().toLowerCase())
+          : true,
+      );
+  }, [overviewRowsYear, overviewDepartment, overviewSectionSearch]);
 
   const overviewRows = useMemo(() => {
     return overviewRowsYear.filter((row) => {
@@ -347,65 +429,103 @@ export default function TestResultPage({
     });
   }, [overviewRowsYear, overviewDepartment, overviewSection]);
 
+  const overviewRowsForDepartmentChart = useMemo(() => {
+    return overviewRowsYear.filter((row) => {
+      const department = normalizeValue(row.Department);
+      if (overviewDepartment && department !== overviewDepartment) return false;
+      return true;
+    });
+  }, [overviewRowsYear, overviewDepartment]);
+
   const summaryOverview = useMemo(() => {
     const rows = overviewRows;
-    const counts = { normal: 0, abnormal: 0, notTested: 0, other: 0 };
+    const counts = Object.fromEntries(categorySeries.map((item) => [item.key, 0])) as Record<string, number>;
     rows.forEach((row) => {
       const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
-      counts[bucket] += 1;
+      counts[bucket] = (counts[bucket] ?? 0) + 1;
     });
     return counts;
-  }, [overviewRows, testKey, fallbackKeys]);
+  }, [overviewRows, testKey, fallbackKeys, categorySeries]);
+
+  const summaryDepartmentOverview = useMemo(() => {
+    const rows = overviewRowsForDepartmentChart;
+    const counts = Object.fromEntries(categorySeries.map((item) => [item.key, 0])) as Record<string, number>;
+    rows.forEach((row) => {
+      const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
+      counts[bucket] = (counts[bucket] ?? 0) + 1;
+    });
+    return counts;
+  }, [overviewRowsForDepartmentChart, testKey, fallbackKeys, categorySeries]);
 
   const overviewPieData = useMemo(
-    () => [
-      { key: "normal", name: "ปกติ", value: summaryOverview.normal },
-      { key: "abnormal", name: "ผิดปกติ", value: summaryOverview.abnormal },
-      { key: "notTested", name: "ไม่ได้รับการตรวจ", value: summaryOverview.notTested },
-      { key: "other", name: "อื่นๆ", value: summaryOverview.other },
-    ].filter((item) => item.value > 0),
-    [summaryOverview],
+    () =>
+      categorySeries
+        .map((item) => ({ key: item.key, name: item.name, value: summaryOverview[item.key] ?? 0 }))
+        .filter((item) => item.value > 0),
+    [summaryOverview, categorySeries],
   );
 
-  const isNumericTrend = testKey === "Blood Glucose";
+  const overviewDepartmentPieData = useMemo(
+    () =>
+      categorySeries
+        .map((item) => ({ key: item.key, name: item.name, value: summaryDepartmentOverview[item.key] ?? 0 }))
+        .filter((item) => item.value > 0),
+    [summaryDepartmentOverview, categorySeries],
+  );
 
-  const buildGroupChart = (groupKey: "Department" | "Section") => {
-    const rows = overviewRows;
-    const grouped = new Map<string, { normal: number; abnormal: number; notTested: number; other: number }>();
+  const isNumericTrend = testKey === "Blood Glucose" || testKey === "BMI";
+
+  const buildGroupChart = (
+    groupKey: "Department" | "Section",
+    rows: HealthRow[],
+  ) => {
+    const grouped = new Map<string, Record<string, number>>();
     rows.forEach((row) => {
       const groupName = normalizeValue(row[groupKey]) || "Unspecified";
       const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
       if (!grouped.has(groupName)) {
-        grouped.set(groupName, { normal: 0, abnormal: 0, notTested: 0, other: 0 });
+        grouped.set(
+          groupName,
+          Object.fromEntries(categorySeries.map((item) => [item.key, 0])) as Record<string, number>,
+        );
       }
-      grouped.get(groupName)![bucket] += 1;
+      const current = grouped.get(groupName)!;
+      current[bucket] = (current[bucket] ?? 0) + 1;
     });
     return Array.from(grouped.entries())
       .map(([name, counts]) => ({ name, ...counts }))
-      .sort(
-        (a, b) =>
-          b.normal + b.abnormal + b.notTested + b.other -
-          (a.normal + a.abnormal + a.notTested + a.other),
-      );
+      .sort((a, b) => {
+        const rowA = a as Record<string, unknown>;
+        const rowB = b as Record<string, unknown>;
+        const totalA = categorySeries.reduce((sum, item) => sum + Number(rowA[item.key] ?? 0), 0);
+        const totalB = categorySeries.reduce((sum, item) => sum + Number(rowB[item.key] ?? 0), 0);
+        return totalB - totalA;
+      });
   };
 
   const departmentChart = useMemo(
-    () => buildGroupChart("Department"),
-    [overviewRows, testKey, fallbackKeys],
+    () => buildGroupChart("Department", overviewRowsForDepartmentChart),
+    [overviewRowsForDepartmentChart, testKey, fallbackKeys],
   );
 
   const sectionChart = useMemo(
-    () => buildGroupChart("Section"),
+    () => buildGroupChart("Section", overviewRows),
     [overviewRows, testKey, fallbackKeys],
   );
 
   const singleSectionName = useMemo(() => {
+    if (overviewSection) return overviewSection;
     if (overviewSectionOptions.length === 1) return overviewSectionOptions[0];
+    if (sectionChart.length === 1) {
+      const name = normalizeValue(sectionChart[0]?.name);
+      return name || "ไม่ระบุ Section";
+    }
     return "";
-  }, [overviewSectionOptions]);
+  }, [overviewSection, overviewSectionOptions, sectionChart]);
 
   const shouldShowSectionPie =
-    Boolean(overviewSection) || (Boolean(overviewDepartment) && overviewSectionOptions.length === 1);
+    Boolean(overviewSection) ||
+    (Boolean(overviewDepartment) && (overviewSectionOptions.length === 1 || sectionChart.length === 1));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -418,10 +538,11 @@ export default function TestResultPage({
               <select
                 className="h-11 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
                 value={factoryId}
-                onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2)}
+                onChange={(event) => setFactoryId(Number(event.target.value))}
               >
                 <option value={1}>TS</option>
                 <option value={2}>TL</option>
+                <option value={3}>KK</option>
               </select>
             </label>
             <label className="flex flex-col gap-2 text-sm text-gray-600 md:flex-1">
@@ -502,8 +623,10 @@ export default function TestResultPage({
                     className={
                       selectedResult?.bucket === "normal"
                         ? "rounded-xl border border-emerald-200 bg-emerald-50 p-4"
-                        : selectedResult?.bucket === "abnormal"
+                        : selectedResult?.bucket === "abnormal" || selectedResult?.bucket === "high"
                           ? "rounded-xl border border-red-200 bg-red-50 p-4"
+                          : selectedResult?.bucket === "low"
+                            ? "rounded-xl border border-yellow-200 bg-yellow-50 p-4"
                           : "rounded-xl border border-gray-200 bg-gray-50 p-4"
                     }
                   >
@@ -512,8 +635,10 @@ export default function TestResultPage({
                       className={
                         selectedResult?.bucket === "normal"
                           ? "mt-2 text-2xl font-semibold text-emerald-700"
-                          : selectedResult?.bucket === "abnormal"
+                          : selectedResult?.bucket === "abnormal" || selectedResult?.bucket === "high"
                             ? "mt-2 text-2xl font-semibold text-red-700"
+                            : selectedResult?.bucket === "low"
+                              ? "mt-2 text-2xl font-semibold text-yellow-700"
                             : "mt-2 text-2xl font-semibold text-gray-700"
                       }
                     >
@@ -535,9 +660,12 @@ export default function TestResultPage({
                         <YAxis allowDecimals />
                       ) : (
                         <YAxis
-                          domain={[0.4, 1.1]}
-                          ticks={[0.6, 1]}
-                          tickFormatter={(value) => (value >= 1 ? "ผิดปกติ" : "ปกติ")}
+                          domain={isBloodPressure ? [0.1, 1.1] : [0.4, 1.1]}
+                          ticks={isBloodPressure ? [0.2, 0.6, 1] : [0.6, 1]}
+                          tickFormatter={(value) => {
+                            if (isBloodPressure) return value >= 1 ? "สูง" : value >= 0.6 ? "ปกติ" : "ต่ำ";
+                            return value >= 1 ? "ผิดปกติ" : "ปกติ";
+                          }}
                         />
                       )}
                       <Tooltip content={<TrendTooltip testKey={testKey} />} />
@@ -550,7 +678,10 @@ export default function TestResultPage({
                         dot={({ cx, cy, payload }) => {
                           if (typeof cx !== "number" || typeof cy !== "number") return null;
                           const bucket = String(payload?.bucket ?? "");
-                          const fill = bucket === "abnormal" ? "#DC2626" : "#2563EB";
+                          const fill =
+                            bucket === "abnormal" || bucket === "high" || bucket === "low"
+                              ? "#DC2626"
+                              : "#2563EB";
                           return (
                             <circle
                               cx={cx}
@@ -565,7 +696,10 @@ export default function TestResultPage({
                         activeDot={({ cx, cy, payload }) => {
                           if (typeof cx !== "number" || typeof cy !== "number") return null;
                           const bucket = String(payload?.bucket ?? "");
-                          const fill = bucket === "abnormal" ? "#DC2626" : "#2563EB";
+                          const fill =
+                            bucket === "abnormal" || bucket === "high" || bucket === "low"
+                              ? "#DC2626"
+                              : "#2563EB";
                           return (
                             <circle
                               cx={cx}
@@ -598,20 +732,11 @@ export default function TestResultPage({
                 value={overviewYear}
                 onChange={(event) => setOverviewYear(event.target.value)}
               >
-                {factoryId === 1 ? (
-                  <>
-                    <option value="2565">2565</option>
-                    <option value="2566">2566</option>
-                    <option value="2567">2567</option>
-                    <option value="2568">2568</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="2566">2566</option>
-                    <option value="2567">2567</option>
-                    <option value="2568">2568</option>
-                  </>
-                )}
+                {individualYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="flex flex-col gap-2 text-xs text-gray-600">
@@ -630,6 +755,16 @@ export default function TestResultPage({
               </select>
             </label>
             <label className="flex flex-col gap-2 text-xs text-gray-600">
+              Department Search
+              <input
+                type="text"
+                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                placeholder="ค้นหา Department"
+                value={overviewDepartmentSearch}
+                onChange={(event) => setOverviewDepartmentSearch(event.target.value)}
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-xs text-gray-600">
               Section
               <select
                 className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
@@ -644,41 +779,68 @@ export default function TestResultPage({
                 ))}
               </select>
             </label>
+            <label className="flex flex-col gap-2 text-xs text-gray-600">
+              Section Search
+              <input
+                type="text"
+                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                placeholder="ค้นหา Section"
+                value={overviewSectionSearch}
+                onChange={(event) => setOverviewSectionSearch(event.target.value)}
+              />
+            </label>
           </div>
           <div className="grid gap-4">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="mb-4 text-lg font-semibold text-gray-800">
                 สรุปผลตรวจ {title} ปี {overviewYear}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                  <div className="text-xs text-emerald-700">ปกติ</div>
-                  <div className="mt-2 text-2xl font-semibold text-emerald-900">
-                    {summaryOverview.normal}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                    <div className="text-xs text-emerald-700">ปกติ</div>
+                    <div className="mt-2 text-2xl font-semibold text-emerald-900">
+                      {summaryOverview.normal ?? 0}
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                  <div className="text-xs text-red-700">ผิดปกติ</div>
-                  <div className="mt-2 text-2xl font-semibold text-red-900">
-                    {summaryOverview.abnormal}
-                  </div>
-                </div>
+                  {isBloodPressure || isBMI ? (
+                    <>
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                        <div className="text-xs text-red-700">{isBloodPressure ? "ความดันสูง" : "สูงกว่าเกณฑ์ปกติ"}</div>
+                        <div className="mt-2 text-2xl font-semibold text-red-900">
+                          {summaryOverview.high ?? 0}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                        <div className="text-xs text-yellow-700">{isBloodPressure ? "ความดันต่ำ" : "ต่ำกว่าเกณฑ์ปกติ"}</div>
+                        <div className="mt-2 text-2xl font-semibold text-yellow-900">
+                          {summaryOverview.low ?? 0}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                      <div className="text-xs text-red-700">ผิดปกติ</div>
+                      <div className="mt-2 text-2xl font-semibold text-red-900">
+                        {summaryOverview.abnormal ?? 0}
+                      </div>
+                    </div>
+                  )}
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                   <div className="text-xs text-gray-600">ไม่ได้รับการตรวจ</div>
                   <div className="mt-2 text-2xl font-semibold text-gray-900">
-                    {summaryOverview.notTested}
+                    {summaryOverview.notTested ?? 0}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-xs text-slate-600">อื่นๆ</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">
-                    {summaryOverview.other}
+                    {summaryOverview.other ?? 0}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4">
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="mb-3 text-lg font-semibold text-gray-800">
                   {overviewDepartment
@@ -687,11 +849,11 @@ export default function TestResultPage({
                 </div>
                 <div className="h-72">
                   {overviewDepartment ? (
-                    overviewPieData.length ? (
+                    overviewDepartmentPieData.length ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={overviewPieData} dataKey="value" nameKey="name" outerRadius={95} label>
-                            {overviewPieData.map((entry) => (
+                          <Pie data={overviewDepartmentPieData} dataKey="value" nameKey="name" outerRadius={95} label>
+                            {overviewDepartmentPieData.map((entry) => (
                               <Cell key={entry.key} fill={PIE_COLORS[entry.key] ?? "#94A3B8"} />
                             ))}
                           </Pie>
@@ -711,10 +873,15 @@ export default function TestResultPage({
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="normal" name="ปกติ" fill="#16A34A" stackId="test" />
-                        <Bar dataKey="abnormal" name="ผิดปกติ" fill="#DC2626" stackId="test" />
-                        <Bar dataKey="notTested" name="ไม่ได้รับการตรวจ" fill="#6B7280" stackId="test" />
-                        <Bar dataKey="other" name="อื่นๆ" fill="#94A3B8" stackId="test" />
+                        {categorySeries.map((item) => (
+                          <Bar
+                            key={item.key}
+                            dataKey={item.key}
+                            name={item.name}
+                            fill={PIE_COLORS[item.key] ?? "#94A3B8"}
+                            stackId="test"
+                          />
+                        ))}
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -726,9 +893,7 @@ export default function TestResultPage({
               </div>
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="mb-3 text-lg font-semibold text-gray-800">
-                  {overviewSection
-                    ? overviewSection
-                    : shouldShowSectionPie && singleSectionName
+                  {shouldShowSectionPie && singleSectionName
                       ? singleSectionName
                     : `สัดส่วน ${title} ตาม Section`}
                 </div>
@@ -758,10 +923,15 @@ export default function TestResultPage({
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="normal" name="ปกติ" fill="#16A34A" stackId="test" />
-                        <Bar dataKey="abnormal" name="ผิดปกติ" fill="#DC2626" stackId="test" />
-                        <Bar dataKey="notTested" name="ไม่ได้รับการตรวจ" fill="#6B7280" stackId="test" />
-                        <Bar dataKey="other" name="อื่นๆ" fill="#94A3B8" stackId="test" />
+                        {categorySeries.map((item) => (
+                          <Bar
+                            key={item.key}
+                            dataKey={item.key}
+                            name={item.name}
+                            fill={PIE_COLORS[item.key] ?? "#94A3B8"}
+                            stackId="test"
+                          />
+                        ))}
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (

@@ -183,8 +183,21 @@ export default function RiskReport() {
   const [rows, setRows] = useState<HealthRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [factoryId, setFactoryId] = useState<1 | 2>(1);
+  const [factoryId, setFactoryId] = useState<number>(1);
+  const [year, setYear] = useState<string>("2568");
 
+  const yearsForFactory = useMemo(() => {
+    if (factoryId === 1) return ["2565", "2566", "2567", "2568"];
+    if (factoryId === 2) return ["2566", "2567", "2568"];
+    if (factoryId === 3) return ["2564", "2565", "2566", "2567", "2568"];
+    return ["2568"];
+  }, [factoryId]);
+
+  useEffect(() => {
+    if (!yearsForFactory.includes(year)) {
+      setYear(yearsForFactory[yearsForFactory.length - 1] ?? "2568");
+    }
+  }, [year, yearsForFactory]);
 
   useEffect(() => {
     let active = true;
@@ -198,7 +211,7 @@ export default function RiskReport() {
         const dataAll = (await response.json()) as HealthRow[];
         const filtered = Array.isArray(dataAll)
           ? dataAll.filter(
-              (row) => Number(row.FactoryId) === factoryId && String(row.Year) === "2568",
+              (row) => Number(row.FactoryId) === factoryId && String(row.Year) === year,
             )
           : [];
         if (active) {
@@ -218,7 +231,7 @@ export default function RiskReport() {
     return () => {
       active = false;
     };
-  }, [factoryId]);
+  }, [factoryId, year]);
 
   const totals = useMemo(() => {
     return {
@@ -252,14 +265,28 @@ export default function RiskReport() {
       <main className="mx-auto flex max-w-6xl flex-col gap-6 pt-18 pb-8">
         <section className="flex items-center justify-between rounded-2xl border bg-white px-5 py-4">
           <div className="text-sm font-semibold text-gray-700">Factory</div>
-          <select
-            className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
-            value={factoryId}
-            onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2)}
-          >
-            <option value={1}>TS</option>
-            <option value={2}>TL</option>
-          </select>
+          <div className="flex items-center gap-3">
+            <select
+              className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+              value={factoryId}
+              onChange={(event) => setFactoryId(Number(event.target.value))}
+            >
+              <option value={1}>TS</option>
+              <option value={2}>TL</option>
+              <option value={3}>KK</option>
+            </select>
+            <select
+              className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+              value={year}
+              onChange={(event) => setYear(event.target.value)}
+            >
+              {yearsForFactory.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </section>
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-2xl border bg-white p-5">
