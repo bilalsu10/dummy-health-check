@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { getDatasetPath } from "@/lib/dataPath";
 import {
   Bar,
   BarChart,
@@ -24,13 +25,6 @@ type TestResultPageProps = {
   testKey: string;
   fallbackKeys?: string[];
   backLabel?: string;
-};
-
-const getYearsForFactory = (factoryId: number) => {
-  if (factoryId === 1) return ["2565", "2566", "2567", "2568"];
-  if (factoryId === 2) return ["2566", "2567", "2568"];
-  if (factoryId === 3) return ["2564", "2565", "2566", "2567", "2568"];
-  return ["2568"];
 };
 
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
@@ -69,10 +63,17 @@ const getTestRawValue = (
   return "";
 };
 
-const isNotTested = (value: string) =>
-  value.includes("ไม่ได้รับการตรวจ") ||
-  value.includes("ไม่รับการตรวจ") ||
-  value.includes("ไม่ตรวจ");
+const isNotTested = (value: string) => {
+  const normalized = value.trim();
+  const isDashOnly = /^[\-\u2010-\u2015\u2212]+(\s*,\s*[\-\u2010-\u2015\u2212]+)*$/.test(normalized);
+
+  return (
+    isDashOnly ||
+    normalized.includes("ไม่ได้รับการตรวจ") ||
+    normalized.includes("ไม่รับการตรวจ") ||
+    normalized.includes("ไม่ตรวจ")
+  );
+};
 
 const parseNumeric = (value: string) => {
   const raw = value.split(",")[0]?.trim() ?? "";
@@ -171,6 +172,11 @@ const getDisplayValue = (value: string, testKey: string) => {
   return value;
 };
 
+const getResultNumberDisplay = (value: string) => {
+  const numeric = parseNumeric(value);
+  return numeric === null ? "-" : numeric.toString();
+};
+
 type TrendTooltipProps = {
   active?: boolean;
   payload?: Array<{ payload?: { raw?: string; value?: number | null; bucket?: string } }>;
@@ -239,8 +245,9 @@ export default function TestResultPage({
   const [error, setError] = useState<string | null>(null);
   const [factoryId, setFactoryId] = useState<number>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
-  const [selectedYear, setSelectedYear] = useState("2568");
-  const [overviewYear, setOverviewYear] = useState("2568");
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
+  const [selectedYear, setSelectedYear] = useState("");
+  const [overviewYear, setOverviewYear] = useState("");
   const [overviewDepartment, setOverviewDepartment] = useState("");
   const [overviewSection, setOverviewSection] = useState("");
   const [overviewDepartmentSearch, setOverviewDepartmentSearch] = useState("");
@@ -250,8 +257,9 @@ export default function TestResultPage({
     let active = true;
     const load = async () => {
       try {
+        setLoading(true);
         setError(null);
-        const resAll = await fetch(`/data/ALL/all.json`, { cache: "no-store" });
+        const resAll = await fetch(getDatasetPath("ALL/all.json"), { cache: "no-store" });
         if (!resAll.ok) {
           throw new Error("Failed to load dataset");
         }
@@ -259,19 +267,19 @@ export default function TestResultPage({
         const filtered = Array.isArray(dataAll)
           ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
           : [];
-        const rows2568 = filtered.filter((row) => String(row.Year) === "2568");
-        const rows2567 = filtered.filter((row) => String(row.Year) === "2567");
-        const rows2566 = filtered.filter((row) => String(row.Year) === "2566");
-        const rows2565 = filtered.filter((row) => String(row.Year) === "2565");
-        const rows2564 = filtered.filter((row) => String(row.Year) === "2564");
+
+        const years = Array.from(
+          new Set(filtered.map((row) => normalizeValue(row.Year)).filter(Boolean)),
+        ).sort((a, b) => Number(a) - Number(b));
+
+        const nextRowsByYear = years.reduce<Record<string, HealthRow[]>>((acc, year) => {
+          acc[year] = filtered.filter((row) => normalizeValue(row.Year) === year);
+          return acc;
+        }, {});
+
         if (active) {
-          setRowsByYear({
-            "2568": rows2568,
-            "2567": rows2567,
-            "2566": rows2566,
-            "2565": rows2565,
-            "2564": rows2564,
-          });
+          setAvailableYears(years);
+          setRowsByYear(nextRowsByYear);
         }
       } catch (err) {
         if (active) {
@@ -291,9 +299,6 @@ export default function TestResultPage({
 
   useEffect(() => {
     setSelectedEmpId("");
-    const years = getYearsForFactory(factoryId);
-    setSelectedYear(years[years.length - 1] ?? "2568");
-    setOverviewYear(years[years.length - 1] ?? "2568");
   }, [factoryId]);
 
   useEffect(() => {
@@ -308,7 +313,25 @@ export default function TestResultPage({
     setOverviewSectionSearch("");
   }, [overviewDepartment]);
 
-  const individualYears = useMemo(() => getYearsForFactory(factoryId), [factoryId]);
+  useEffect(() => {
+    if (!availableYears.length) {
+      setSelectedYear("");
+      setOverviewYear("");
+      return;
+    }
+
+    const latestYear = availableYears[availableYears.length - 1] ?? "";
+    if (!availableYears.includes(selectedYear)) {
+      setSelectedYear(latestYear);
+    }
+    if (!availableYears.includes(overviewYear)) {
+      setOverviewYear(latestYear);
+    }
+  }, [availableYears, selectedYear, overviewYear]);
+
+  
+
+  const individualYears = availableYears;
 
   const people = useMemo(() => {
     const merged = new Map<string, { empId: string; name: string; department: string; section: string }>();
@@ -616,7 +639,7 @@ export default function TestResultPage({
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div className="text-xs text-slate-600">ผลตรวจ</div>
                     <div className="mt-2 text-2xl font-semibold text-slate-900">
-                      {selectedResult ? getDisplayValue(selectedResult.raw, testKey) : "-"}
+                      {selectedResult ? getResultNumberDisplay(selectedResult.raw) : "-"}
                     </div>
                   </div>
                   <div

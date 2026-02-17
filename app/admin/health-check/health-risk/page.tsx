@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { getDatasetPath } from "@/lib/dataPath";
 import {
   Bar,
   BarChart,
@@ -127,8 +128,12 @@ const normalizeValue = (value: unknown) => String(value ?? "").trim();
 const includeAny = (value: string, targets: string[]) =>
   targets.some((target) => value.includes(target));
 
-const isNotTested = (value: string) =>
-  includeAny(value, ["ไม่ได้รับการตรวจ", "ไม่รับการตรวจ", "ไม่ตรวจ"]);
+const isNotTested = (value: string) => {
+  const normalized = value.trim();
+  const isDashOnly = /^[\-\u2010-\u2015\u2212]+(\s*,\s*[\-\u2010-\u2015\u2212]+)*$/.test(normalized);
+
+  return isDashOnly || includeAny(normalized, ["ไม่ได้รับการตรวจ", "ไม่รับการตรวจ", "ไม่ตรวจ"]);
+};
 
 const categorizeBmi = (value: string) => {
   if (value.includes("สมส่วน")) return "Normal";
@@ -184,37 +189,38 @@ export default function RiskReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [factoryId, setFactoryId] = useState<number>(1);
-  const [year, setYear] = useState<string>("2568");
-
-  const yearsForFactory = useMemo(() => {
-    if (factoryId === 1) return ["2565", "2566", "2567", "2568"];
-    if (factoryId === 2) return ["2566", "2567", "2568"];
-    if (factoryId === 3) return ["2564", "2565", "2566", "2567", "2568"];
-    return ["2568"];
-  }, [factoryId]);
-
-  useEffect(() => {
-    if (!yearsForFactory.includes(year)) {
-      setYear(yearsForFactory[yearsForFactory.length - 1] ?? "2568");
-    }
-  }, [year, yearsForFactory]);
+  const [year, setYear] = useState<string>("");
+  const [yearsForFactory, setYearsForFactory] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       try {
+        setLoading(true);
         setError(null);
-        const response = await fetch(`/data/ALL/all.json`, { cache: "no-store" });
+        const response = await fetch(getDatasetPath("ALL/all.json"), { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Failed to load data (${response.status} ${response.statusText})`);
         }
         const dataAll = (await response.json()) as HealthRow[];
-        const filtered = Array.isArray(dataAll)
-          ? dataAll.filter(
-              (row) => Number(row.FactoryId) === factoryId && String(row.Year) === year,
-            )
+        const factoryRows = Array.isArray(dataAll)
+          ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
           : [];
+
+        const years = Array.from(
+          new Set(factoryRows.map((row) => normalizeValue(row.Year)).filter(Boolean)),
+        ).sort((a, b) => Number(a) - Number(b));
+
+        const effectiveYear = years.includes(year) ? year : (years[years.length - 1] ?? "");
+        const filtered = effectiveYear
+          ? factoryRows.filter((row) => normalizeValue(row.Year) === effectiveYear)
+          : [];
+
         if (active) {
+          setYearsForFactory(years);
+          if (effectiveYear !== year) {
+            setYear(effectiveYear);
+          }
           setRows(filtered);
         }
       } catch (err) {
