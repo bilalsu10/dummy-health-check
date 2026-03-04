@@ -26,7 +26,16 @@ const parseFactoryText = (raw: string): number | null => {
 };
 
 export const getFactoryIdFromRow = (row: RowLike): number | null => {
-  const candidates = [row.FactoryId, row.factoryId, row.Factory, row.factory];
+  const candidates = [
+    row.FactoryId,
+    row.factoryId,
+    row.factory_id,
+    row.Factory_ID,
+    row.Factory,
+    row.factory,
+    row.FactoryName,
+    row.factory_name,
+  ];
   for (const candidate of candidates) {
     const parsed = parseFactoryText(String(candidate ?? ""));
     if (parsed !== null) return parsed;

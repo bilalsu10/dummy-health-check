@@ -125,6 +125,8 @@ const TEST_COLUMNS: Array<{ key: string; label: string }> = [
 const PIE_COLORS = ["#4C7A5A", "#B94A48", "#B07C2D", "#6B7280"];
 
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
+const getRowYear = (row: HealthRow) =>
+  normalizeValue(row.Year ?? row.year ?? row["ปี"] ?? row["year"]);
 
 const includeAny = (value: string, targets: string[]) =>
   targets.some((target) => value.includes(target));
@@ -207,12 +209,12 @@ export default function RiskReport() {
         const factoryRows = Array.isArray(dataAll) ? dataAll.filter((row) => matchesFactory(row, factoryId)) : [];
 
         const years = Array.from(
-          new Set(factoryRows.map((row) => normalizeValue(row.Year)).filter(Boolean)),
+          new Set(factoryRows.map((row) => getRowYear(row)).filter(Boolean)),
         ).sort((a, b) => Number(a) - Number(b));
 
         const effectiveYear = years.includes(year) ? year : (years[years.length - 1] ?? "");
         const filtered = effectiveYear
-          ? factoryRows.filter((row) => normalizeValue(row.Year) === effectiveYear)
+          ? factoryRows.filter((row) => getRowYear(row) === effectiveYear)
           : [];
 
         if (active) {

@@ -29,6 +29,8 @@ type TestResultPageProps = {
 };
 
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
+const getRowYear = (row: HealthRow) =>
+  normalizeValue(row.Year ?? row.year ?? row["ปี"] ?? row["year"]);
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
 
 const NUMERIC_THRESHOLDS: Record<string, number> = {
@@ -364,11 +366,11 @@ export default function TestResultPage({
         const filtered = Array.isArray(dataAll) ? dataAll.filter((row) => matchesFactory(row, factoryId)) : [];
 
         const years = Array.from(
-          new Set(filtered.map((row) => normalizeValue(row.Year)).filter(Boolean)),
+          new Set(filtered.map((row) => getRowYear(row)).filter(Boolean)),
         ).sort((a, b) => Number(a) - Number(b));
 
         const nextRowsByYear = years.reduce<Record<string, HealthRow[]>>((acc, year) => {
-          acc[year] = filtered.filter((row) => normalizeValue(row.Year) === year);
+          acc[year] = filtered.filter((row) => getRowYear(row) === year);
           return acc;
         }, {});
 
