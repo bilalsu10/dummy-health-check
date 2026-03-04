@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getDatasetPath } from "@/lib/dataPath";
+import { fetchDatasetJson } from "@/lib/dataPath";
 import { matchesFactory } from "@/lib/factory";
 import {
   Bar,
@@ -201,11 +201,7 @@ export default function RiskReport() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(getDatasetPath("ALL/all.json"), { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`Failed to load data (${response.status} ${response.statusText})`);
-        }
-        const dataAll = (await response.json()) as HealthRow[];
+        const dataAll = await fetchDatasetJson<HealthRow[]>("ALL/all.json", { cache: "no-store" });
         const factoryRows = Array.isArray(dataAll) ? dataAll.filter((row) => matchesFactory(row, factoryId)) : [];
 
         const years = Array.from(

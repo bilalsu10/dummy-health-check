@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getDatasetPath } from "@/lib/dataPath";
+import { fetchDatasetJson } from "@/lib/dataPath";
 import { factoryLabelFromRow, matchesFactory } from "@/lib/factory";
 import {
   Bar,
@@ -30,6 +30,8 @@ const OVERVIEW_GROUPS = [
 ];
 
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
+const getRowYear = (row: HealthRow) =>
+  normalizeValue(row.Year ?? row.year ?? row["ปี"] ?? row["year"]);
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
 
 const getVaRawValue = (row: HealthRow | null) => {
@@ -93,16 +95,12 @@ export default function EyesVaReport() {
       try {
         setLoading(true);
         setError(null);
-        const resAll = await fetch(getDatasetPath("ALL/all.json"), { cache: "no-store" });
-        if (!resAll.ok) {
-          throw new Error("Failed to load dataset");
-        }
-        const dataAll = (await resAll.json()) as HealthRow[];
+        const dataAll = await fetchDatasetJson<HealthRow[]>("ALL/all.json", { cache: "no-store" });
         const allRows = Array.isArray(dataAll) ? dataAll : [];
-        const rows2568 = allRows.filter((row) => String(row.Year) === "2568");
-        const rows2567 = allRows.filter((row) => String(row.Year) === "2567");
-        const rows2566 = allRows.filter((row) => String(row.Year) === "2566");
-        const rows2565 = allRows.filter((row) => String(row.Year) === "2565");
+        const rows2568 = allRows.filter((row) => getRowYear(row) === "2568");
+        const rows2567 = allRows.filter((row) => getRowYear(row) === "2567");
+        const rows2566 = allRows.filter((row) => getRowYear(row) === "2566");
+        const rows2565 = allRows.filter((row) => getRowYear(row) === "2565");
         if (active) {
           setRowsByYear({
             "2568": rows2568,

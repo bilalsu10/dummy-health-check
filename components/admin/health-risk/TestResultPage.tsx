@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getDatasetPath } from "@/lib/dataPath";
+import { fetchDatasetJson } from "@/lib/dataPath";
 import { factoryLabelFromRow, matchesFactory } from "@/lib/factory";
 import {
   Bar,
@@ -358,11 +358,7 @@ export default function TestResultPage({
       try {
         setLoading(true);
         setError(null);
-        const resAll = await fetch(getDatasetPath("ALL/all.json"), { cache: "no-store" });
-        if (!resAll.ok) {
-          throw new Error("Failed to load dataset");
-        }
-        const dataAll = (await resAll.json()) as HealthRow[];
+        const dataAll = await fetchDatasetJson<HealthRow[]>("ALL/all.json", { cache: "no-store" });
         const filtered = Array.isArray(dataAll) ? dataAll.filter((row) => matchesFactory(row, factoryId)) : [];
 
         const years = Array.from(
