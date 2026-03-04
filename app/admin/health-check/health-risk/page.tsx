@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getDatasetPath } from "@/lib/dataPath";
+import { matchesFactory } from "@/lib/factory";
 import {
   Bar,
   BarChart,
@@ -203,9 +204,7 @@ export default function RiskReport() {
           throw new Error(`Failed to load data (${response.status} ${response.statusText})`);
         }
         const dataAll = (await response.json()) as HealthRow[];
-        const factoryRows = Array.isArray(dataAll)
-          ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
-          : [];
+        const factoryRows = Array.isArray(dataAll) ? dataAll.filter((row) => matchesFactory(row, factoryId)) : [];
 
         const years = Array.from(
           new Set(factoryRows.map((row) => normalizeValue(row.Year)).filter(Boolean)),

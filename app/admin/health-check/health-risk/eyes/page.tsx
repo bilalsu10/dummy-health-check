@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getDatasetPath } from "@/lib/dataPath";
+import { factoryLabelFromRow, matchesFactory } from "@/lib/factory";
 import {
   Bar,
   BarChart,
@@ -123,20 +124,20 @@ export default function EyesReport() {
   const people = useMemo(() => {
     const baseRows = rowsByYear[selectedYear] ?? [];
     return baseRows
-      .filter((row) => Number(row.FactoryId) === factoryId)
+      .filter((row) => matchesFactory(row, factoryId))
       .map((row) => ({
         empId: normalizeValue(row.SCG_EmpID),
         name: normalizeValue(row.Name),
         department: normalizeValue(row.Department),
       }))
       .filter((person) => person.empId);
-  }, [rowsByYear, selectedYear]);
+  }, [rowsByYear, selectedYear, factoryId]);
 
   const selectedPerson = useMemo(() => {
     if (!selectedEmpId) return null;
     return (
       rowsByYear[selectedYear]?.find(
-        (row) => normalizeValue(row.SCG_EmpID) === selectedEmpId && Number(row.FactoryId) === factoryId,
+        (row) => normalizeValue(row.SCG_EmpID) === selectedEmpId && matchesFactory(row, factoryId),
       ) ?? null
     );
   }, [rowsByYear, selectedEmpId, selectedYear, factoryId]);
@@ -180,7 +181,7 @@ export default function EyesReport() {
     return years.map((year) => {
         const row =
           rowsByYear[year]?.find(
-            (item) => normalizeValue(item.SCG_EmpID) === selectedEmpId && Number(item.FactoryId) === factoryId,
+            (item) => normalizeValue(item.SCG_EmpID) === selectedEmpId && matchesFactory(item, factoryId),
           ) ?? null;
       const values = parseVisionItems(row?.[VISION_KEY]);
       return {
@@ -198,7 +199,7 @@ export default function EyesReport() {
     return Array.from(
       new Set(
         overviewRowsYear
-          .filter((row) => (overviewFactory ? String(row.FactoryId) === overviewFactory : true))
+          .filter((row) => (overviewFactory ? matchesFactory(row, Number(overviewFactory)) : true))
           .map((row) => normalizeValue(row.Department))
           .filter((value) => value && value !== "-"),
       ),
@@ -209,7 +210,7 @@ export default function EyesReport() {
     return Array.from(
       new Set(
         overviewRowsYear
-          .filter((row) => (overviewFactory ? String(row.FactoryId) === overviewFactory : true))
+          .filter((row) => (overviewFactory ? matchesFactory(row, Number(overviewFactory)) : true))
           .filter((row) => (overviewDepartment ? normalizeValue(row.Department) === overviewDepartment : true))
           .map((row) => normalizeValue(row.Section))
           .filter((value) => value && value !== "-"),
@@ -219,7 +220,7 @@ export default function EyesReport() {
 
   const filteredOverviewRows = useMemo(() => {
     return overviewRowsYear.filter((row) => {
-      if (overviewFactory && String(row.FactoryId) !== overviewFactory) return false;
+      if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
       if (overviewDepartment && normalizeValue(row.Department) !== overviewDepartment) return false;
       if (overviewSection && normalizeValue(row.Section) !== overviewSection) return false;
       return true;
@@ -229,20 +230,20 @@ export default function EyesReport() {
   const getRowsForGroupChart = (groupKey: string) => {
     if (groupKey === "Factory") {
       return overviewRowsYear.filter((row) => {
-        if (overviewFactory && String(row.FactoryId) !== overviewFactory) return false;
+        if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
         return true;
       });
     }
     if (groupKey === "Department") {
       return overviewRowsYear.filter((row) => {
-        if (overviewFactory && String(row.FactoryId) !== overviewFactory) return false;
+        if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
         if (overviewDepartment && normalizeValue(row.Department) !== overviewDepartment) return false;
         return true;
       });
     }
     if (groupKey === "Section") {
       return overviewRowsYear.filter((row) => {
-        if (overviewFactory && String(row.FactoryId) !== overviewFactory) return false;
+        if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
         if (overviewDepartment && normalizeValue(row.Department) !== overviewDepartment) return false;
         if (overviewSection && normalizeValue(row.Section) !== overviewSection) return false;
         return true;
@@ -261,16 +262,10 @@ export default function EyesReport() {
   const buildGroupChart = (indices: number[], groupKey: string) => {
     const rows = getRowsForGroupChart(groupKey);
     const grouped = new Map<string, { normal: number; abnormal: number }>();
-    const toFactoryLabel = (id: number) => {
-      if (id === 1) return "TS";
-      if (id === 2) return "TL";
-      if (id === 3) return "KK";
-      return "Unspecified";
-    };
     rows.forEach((row) => {
       const groupName =
         groupKey === "Factory"
-          ? toFactoryLabel(Number(row.FactoryId))
+          ? factoryLabelFromRow(row)
           : normalizeValue(row[groupKey]) || "Unspecified";
       const values = parseVisionItems(row[VISION_KEY]);
       if (!values.length) return;

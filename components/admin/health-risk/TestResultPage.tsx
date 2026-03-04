@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getDatasetPath } from "@/lib/dataPath";
+import { factoryLabelFromRow, matchesFactory } from "@/lib/factory";
 import {
   Bar,
   BarChart,
@@ -360,9 +361,7 @@ export default function TestResultPage({
           throw new Error("Failed to load dataset");
         }
         const dataAll = (await resAll.json()) as HealthRow[];
-        const filtered = Array.isArray(dataAll)
-          ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
-          : [];
+        const filtered = Array.isArray(dataAll) ? dataAll.filter((row) => matchesFactory(row, factoryId)) : [];
 
         const years = Array.from(
           new Set(filtered.map((row) => normalizeValue(row.Year)).filter(Boolean)),
@@ -615,13 +614,7 @@ export default function TestResultPage({
     rows.forEach((row) => {
       const groupName =
         groupKey === "Factory"
-          ? Number(row.FactoryId) === 1
-            ? "TS"
-            : Number(row.FactoryId) === 2
-              ? "TL"
-              : Number(row.FactoryId) === 3
-                ? "KK"
-                : "Unspecified"
+          ? factoryLabelFromRow(row)
           : normalizeValue(row[groupKey]) || "Unspecified";
       const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
       if (!grouped.has(groupName)) {
