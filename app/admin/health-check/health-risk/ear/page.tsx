@@ -10,6 +10,9 @@ import {
   Legend,
   Bar,
   BarChart,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -25,8 +28,8 @@ const normalizeValue = (value: unknown) => String(value ?? "").trim();
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
 
 const HEARING_FREQ_LABELS = ["500", "1000", "2000", "3000", "4000", "6000", "8000"];
-const GROUP_FIELDS = [
-  { label: "Division", key: "Division" },
+const OVERVIEW_GROUPS = [
+  { label: "Factory", key: "Factory" },
   { label: "Department", key: "Department" },
   { label: "Section", key: "Section" },
 ];
@@ -72,7 +75,9 @@ export default function EyesReport() {
   const [factoryId, setFactoryId] = useState<1 | 2 | 3>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
-  const [selectedGroupKey, setSelectedGroupKey] = useState("Division");
+  const [overviewFactory, setOverviewFactory] = useState<string>("");
+  const [overviewDepartment, setOverviewDepartment] = useState<string>("");
+  const [overviewSection, setOverviewSection] = useState<string>("");
 
   useEffect(() => {
     let active = true;
@@ -85,13 +90,11 @@ export default function EyesReport() {
           throw new Error("Failed to load dataset");
         }
         const dataAll = (await resAll.json()) as HealthRow[];
-        const filtered = Array.isArray(dataAll)
-          ? dataAll.filter((row) => Number(row.FactoryId) === factoryId)
-          : [];
-        const rows2568 = filtered.filter((row) => String(row.Year) === "2568");
-        const rows2567 = filtered.filter((row) => String(row.Year) === "2567");
-        const rows2566 = filtered.filter((row) => String(row.Year) === "2566");
-        const rows2565 = filtered.filter((row) => String(row.Year) === "2565");
+        const allRows = Array.isArray(dataAll) ? dataAll : [];
+        const rows2568 = allRows.filter((row) => String(row.Year) === "2568");
+        const rows2567 = allRows.filter((row) => String(row.Year) === "2567");
+        const rows2566 = allRows.filter((row) => String(row.Year) === "2566");
+        const rows2565 = allRows.filter((row) => String(row.Year) === "2565");
         if (active) {
           setRowsByYear({
             "2568": rows2568,
@@ -114,7 +117,7 @@ export default function EyesReport() {
     return () => {
       active = false;
     };
-  }, [factoryId]);
+  }, []);
 
   const availableYears = useMemo(() => {
     return YEAR_ORDER_ALL.filter((year) =>
@@ -140,6 +143,7 @@ export default function EyesReport() {
     if (!selectedYear) return [];
     const baseRows = rowsByYear[selectedYear] ?? [];
     return baseRows
+      .filter((row) => Number(row.FactoryId) === factoryId)
       .map((row) => ({
         empId: normalizeValue(row.SCG_EmpID),
         name: normalizeValue(row.Name),
@@ -152,10 +156,12 @@ export default function EyesReport() {
     if (!selectedEmpId) return null;
     if (!selectedYear) return null;
     return (
-      rowsByYear[selectedYear]?.find((row) => normalizeValue(row.SCG_EmpID) === selectedEmpId) ??
+      rowsByYear[selectedYear]?.find(
+        (row) => normalizeValue(row.SCG_EmpID) === selectedEmpId && Number(row.FactoryId) === factoryId,
+      ) ??
       null
     );
-  }, [rowsByYear, selectedEmpId, selectedYear]);
+  }, [rowsByYear, selectedEmpId, selectedYear, factoryId]);
 
   const hearingCharts = useMemo(() => {
     if (!selectedPerson) {
@@ -209,7 +215,9 @@ export default function EyesReport() {
     ].map((category) => {
       const data = yearOrder.map((year) => {
         const row =
-          rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
+          rowsByYear[year]?.find(
+            (item) => normalizeValue(item.SCG_EmpID) === selectedEmpId && Number(item.FactoryId) === factoryId,
+          ) ??
           null;
         const values = parseHearingValues(getHearingRawValue(row));
         const selected = category.indices.map((idx) => values[idx]).filter((val) => val != null);
@@ -246,15 +254,77 @@ export default function EyesReport() {
 
   const show2565 = factoryId === 1;
 
-  const buildGroupCounts = (
-    rows: HealthRow[],
-    groupKey: string,
-    indices: number[],
-    label: string,
-  ) => {
+  const overviewRowsYear = useMemo(() => rowsByYear[selectedYear] ?? [], [rowsByYear, selectedYear]);
+
+  const overviewDepartmentOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        overviewRowsYear
+          .filter((row) => (overviewFactory ? String(row.FactoryId) === overviewFactory : true))
+          .map((row) => normalizeValue(row.Department))
+          .filter((value) => value && value !== "-"),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [overviewRowsYear, overviewFactory]);
+
+  const overviewSectionOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        overviewRowsYear
+          .filter((row) => (overviewFactory ? String(row.FactoryId) === overviewFactory : true))
+          .filter((row) => (overviewDepartment ? normalizeValue(row.Department) === overviewDepartment : true))
+          .map((row) => normalizeValue(row.Section))
+          .filter((value) => value && value !== "-"),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [overviewRowsYear, overviewFactory, overviewDepartment]);
+
+  const getRowsForGroupChart = (groupKey: string) => {
+    if (groupKey === "Factory") {
+      return overviewRowsYear.filter((row) => {
+        if (overviewFactory && String(row.FactoryId) !== overviewFactory) return false;
+        return true;
+      });
+    }
+    if (groupKey === "Department") {
+      return overviewRowsYear.filter((row) => {
+        if (overviewFactory && String(row.FactoryId) !== overviewFactory) return false;
+        if (overviewDepartment && normalizeValue(row.Department) !== overviewDepartment) return false;
+        return true;
+      });
+    }
+    if (groupKey === "Section") {
+      return overviewRowsYear.filter((row) => {
+        if (overviewFactory && String(row.FactoryId) !== overviewFactory) return false;
+        if (overviewDepartment && normalizeValue(row.Department) !== overviewDepartment) return false;
+        if (overviewSection && normalizeValue(row.Section) !== overviewSection) return false;
+        return true;
+      });
+    }
+    return overviewRowsYear;
+  };
+
+  const shouldShowPieForChart = (chartKey: string) => {
+    if (chartKey === "Factory") return Boolean(overviewFactory);
+    if (chartKey === "Department") return Boolean(overviewDepartment);
+    if (chartKey === "Section") return Boolean(overviewSection);
+    return false;
+  };
+
+  const buildGroupCounts = (groupKey: string, indices: number[]) => {
+    const rows = getRowsForGroupChart(groupKey);
     const grouped = new Map<string, { normal: number; abnormal: number }>();
+    const toFactoryLabel = (id: number) => {
+      if (id === 1) return "TS";
+      if (id === 2) return "TL";
+      if (id === 3) return "KK";
+      return "Unspecified";
+    };
     rows.forEach((row) => {
-      const groupName = normalizeValue(row[groupKey]) || "Unspecified";
+      const groupName =
+        groupKey === "Factory"
+          ? toFactoryLabel(Number(row.FactoryId))
+          : normalizeValue(row[groupKey]) || "Unspecified";
       const values = parseHearingValues(getHearingRawValue(row));
       if (!values.length) return;
       const selected = indices.map((idx) => values[idx]).filter((val) => Number.isFinite(val));
@@ -269,18 +339,49 @@ export default function EyesReport() {
     const data = Array.from(grouped.entries())
       .map(([name, counts]) => ({ name, ...counts }))
       .sort((a, b) => b.normal + b.abnormal - (a.normal + a.abnormal));
-    return { label, data };
+    const totals = data.reduce(
+      (acc, item) => {
+        acc.normal += item.normal ?? 0;
+        acc.abnormal += item.abnormal ?? 0;
+        return acc;
+      },
+      { normal: 0, abnormal: 0 },
+    );
+    return { data, totals };
   };
 
   const groupCharts = useMemo(() => {
-    const rows = rowsByYear[selectedYear] ?? [];
     return [
-      buildGroupCounts(rows, selectedGroupKey, [0, 1, 2, 3], "Right ear low (500–3000)"),
-      buildGroupCounts(rows, selectedGroupKey, [4, 5, 6], "Right ear high (4000–8000)"),
-      buildGroupCounts(rows, selectedGroupKey, [7, 8, 9, 10], "Left ear low (500–3000)"),
-      buildGroupCounts(rows, selectedGroupKey, [11, 12, 13], "Left ear high (4000–8000)"),
-    ];
-  }, [rowsByYear, selectedYear, selectedGroupKey]);
+      { label: "Right ear low (500–3000)", indices: [0, 1, 2, 3] },
+      { label: "Right ear high (4000–8000)", indices: [4, 5, 6] },
+      { label: "Left ear low (500–3000)", indices: [7, 8, 9, 10] },
+      { label: "Left ear high (4000–8000)", indices: [11, 12, 13] },
+    ].map((section) => ({
+      ...section,
+      charts: OVERVIEW_GROUPS.map((group) => ({
+        ...group,
+        ...buildGroupCounts(group.key, section.indices),
+      })),
+      totals: OVERVIEW_GROUPS.reduce(
+        (acc, group) => {
+          const t = buildGroupCounts(group.key, section.indices).totals;
+          acc.normal += t.normal;
+          acc.abnormal += t.abnormal;
+          return acc;
+        },
+        { normal: 0, abnormal: 0 },
+      ),
+    }));
+  }, [overviewRowsYear, overviewFactory, overviewDepartment, overviewSection]);
+
+  useEffect(() => {
+    setOverviewDepartment("");
+    setOverviewSection("");
+  }, [overviewFactory]);
+
+  useEffect(() => {
+    setOverviewSection("");
+  }, [overviewDepartment]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -550,42 +651,124 @@ export default function EyesReport() {
               <div className="text-lg font-semibold text-gray-800">
                 Hearing summary by group
               </div>
-              <label className="flex flex-col gap-2 text-xs text-gray-500 sm:flex-row sm:items-center">
-                Group by
+            </div>
+            <div className="mb-4 grid gap-3 md:grid-cols-3">
+              <label className="flex flex-col gap-2 text-xs text-gray-600">
+                Factory
                 <select
                   className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
-                  value={selectedGroupKey}
-                  onChange={(event) => setSelectedGroupKey(event.target.value)}
+                  value={overviewFactory}
+                  onChange={(event) => setOverviewFactory(event.target.value)}
                 >
-                  {GROUP_FIELDS.map((field) => (
-                    <option key={field.key} value={field.key}>
-                      {field.label}
+                  <option value="">All</option>
+                  <option value="1">TS</option>
+                  <option value="2">TL</option>
+                  <option value="3">KK</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-gray-600">
+                Department
+                <select
+                  className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                  value={overviewDepartment}
+                  onChange={(event) => setOverviewDepartment(event.target.value)}
+                >
+                  <option value="">All</option>
+                  {overviewDepartmentOptions.map((department) => (
+                    <option key={department} value={department}>
+                      {department}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-gray-600">
+                Section
+                <select
+                  className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                  value={overviewSection}
+                  onChange={(event) => setOverviewSection(event.target.value)}
+                >
+                  <option value="">All</option>
+                  {overviewSectionOptions.map((section) => (
+                    <option key={section} value={section}>
+                      {section}
                     </option>
                   ))}
                 </select>
               </label>
             </div>
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4">
               {groupCharts.map((chart) => (
                 <div key={chart.label} className="rounded-xl border border-gray-200 bg-white p-4">
-                  <div className="text-xs uppercase text-gray-500">{chart.label}</div>
-                  <div className="mt-3 h-56">
-                    {chart.data.length ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chart.data}>
-                          <XAxis dataKey="name" />
-                          <YAxis allowDecimals={false} />
-                          <Tooltip />
-                          <Legend />
-                          <Bar dataKey="normal" name="Normal" fill="#16A34A" stackId="status" />
-                          <Bar dataKey="abnormal" name="Abnormal" fill="#DC2626" stackId="status" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-gray-500">
-                        No grouped data
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-xs uppercase text-gray-500">{chart.label}</div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700">
+                        Abnormal: {chart.totals.abnormal}
+                      </span>
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
+                        Normal: {chart.totals.normal}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-4 lg:grid-cols-3">
+                    {chart.charts.map((subChart) => (
+                      <div key={`${chart.label}-${subChart.key}`} className="rounded-xl border border-gray-200 bg-white p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="text-sm font-semibold text-gray-700">{subChart.label}</div>
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700">
+                              Abnormal: {subChart.totals.abnormal}
+                            </span>
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
+                              Normal: {subChart.totals.normal}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-3 h-56">
+                          {subChart.data.length ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              {shouldShowPieForChart(subChart.key) || subChart.data.length === 1 ? (
+                                <PieChart>
+                                  <Pie
+                                    data={[
+                                      { name: "Normal", value: subChart.totals.normal },
+                                      { name: "Abnormal", value: subChart.totals.abnormal },
+                                    ]}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={85}
+                                    label={({ value }) =>
+                                      typeof value === "number" && value > 0 ? `${value}` : ""
+                                    }
+                                  >
+                                    <Cell fill="#16A34A" />
+                                    <Cell fill="#DC2626" />
+                                  </Pie>
+                                  <Tooltip />
+                                  <Legend />
+                                </PieChart>
+                              ) : (
+                                <BarChart data={subChart.data}>
+                                  <XAxis dataKey="name" />
+                                  <YAxis allowDecimals={false} />
+                                  <Tooltip />
+                                  <Legend />
+                                  <Bar dataKey="abnormal" name="Abnormal" fill="#DC2626" stackId="status" />
+                                  <Bar dataKey="normal" name="Normal" fill="#16A34A" stackId="status" />
+                                </BarChart>
+                              )}
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                              No grouped data
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               ))}

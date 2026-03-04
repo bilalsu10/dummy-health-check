@@ -104,6 +104,69 @@ const categorizeNormalAbnormal = (value: string, testKey: string) => {
     if (numeric === null) return "other";
     return numeric >= threshold ? "abnormal" : "normal";
   }
+  if (testKey === "Amphetamine") {
+    const lower = value.toLowerCase();
+    if (lower.includes("negative") || value.includes("ไม่พบสารแอมเฟตามีน") || value.includes("ตรวจไม่พบสารเสพติด")) {
+      return "normal";
+    }
+    if (lower.includes("positive") || value.includes("ตรวจพบสารเสพติด")) {
+      return "abnormal";
+    }
+  }
+  if (testKey === "EKG") {
+    const ekgAbnormalHints = [
+      "ชีพจรช้า",
+      "หัวใจเต้นช้า",
+      "หัวใจเต้นผิดจังหวะ",
+      "เต้นผิดจังหวะ",
+      "สัญญาณติดขัด",
+      "การนำกระแสไฟฟ้าหัวใจติดขัด",
+      "ปิดกั้นกระแสไฟฟ้าหัวใจ",
+      "ปิดกั้นไฟฟ้าหัวใจ",
+      "IRBBB",
+      "CRBBB",
+      "หัวใจโต",
+      "หัวใจห้องล่างซ้ายโต",
+      "LVH",
+      "กล้ามเนื้อหัวใจขาดเลือด",
+      "เส้นเลือดหัวใจ",
+      "แกนหัวใจเอียง",
+      "ไม่สามารถแปลผลได้",
+      "ผิดปกติ",
+    ];
+    if (ekgAbnormalHints.some((hint) => value.includes(hint))) {
+      return "abnormal";
+    }
+    if (value.includes("ปกติ")) return "normal";
+  }
+  if (testKey === "Chest X-ray") {
+    const chestAbnormalHints = [
+      "สงสัย",
+      "พบ",
+      "หัวใจโต",
+      "ติดเชื้อ",
+      "พังผืด",
+      "ก้อน",
+      "จุดในปอด",
+      "ฝ้าขาว",
+      "เยื่อหุ้มปอด",
+      "หลอดลมเอียง",
+      "ร่องรอยวัณโรค",
+      "แนะนำพบแพทย์",
+      "กระดูกสันหลังคด",
+      "หักเก่า",
+      "กระบังลม",
+      "หนาตัว",
+      "อักเสบ",
+      "น้ำในเยื่อหุ้มปอด",
+    ];
+    if (chestAbnormalHints.some((hint) => value.includes(hint))) {
+      return "abnormal";
+    }
+    if (value.includes("ปกติ")) return "normal";
+  }
+  if (value.includes("ไม่เกินค่าอ้างอิง")) return "normal";
+  if (value.includes("เกินค่าอ้างอิง")) return "abnormal";
   if (value.includes("สูงกว่าปกติ")) return "abnormal";
   if (value.includes("ต่ำกว่าปกติ")) return "abnormal";
   if (value.includes("ผิดปกติ")) return "abnormal";
@@ -173,6 +236,29 @@ const getDisplayValue = (value: string, testKey: string) => {
 };
 
 const getResultNumberDisplay = (value: string, testKey: string) => {
+  if (testKey === "EKG") {
+    return value.trim() || "-";
+  }
+  if (testKey === "Lung Function") {
+    const firstPart = value.split(",")[0]?.trim() ?? "";
+    return firstPart || "-";
+  }
+  if (testKey === "Chest X-ray") {
+    const firstPart = value.split(",")[0]?.trim() ?? "";
+    return firstPart || "-";
+  }
+  if (testKey === "Stool Exam") {
+    const firstPart = value.split(",")[0]?.trim() ?? "";
+    return firstPart || "-";
+  }
+  if (testKey === "Amphetamine") {
+    const lower = value.toLowerCase();
+    if (lower.includes("positive") || value.includes("ตรวจพบสารเสพติด")) return "Positive";
+    if (lower.includes("negative") || value.includes("ไม่พบสารแอมเฟตามีน") || value.includes("ตรวจไม่พบสารเสพติด")) {
+      return "Negative";
+    }
+    return value.trim() || "-";
+  }
   if (testKey === "Blood Pressure") {
     const bpMatch = value.match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
     if (bpMatch) {
@@ -287,8 +373,15 @@ export default function TestResultPage({
           return acc;
         }, {});
 
+        const yearsWithTestData = years.filter((year) =>
+          (nextRowsByYear[year] ?? []).some((row) => {
+            const raw = normalizeValue(getTestRawValue(row, testKey, fallbackKeys));
+            return raw !== "" && raw.toLowerCase() !== "null";
+          }),
+        );
+
         if (active) {
-          setAvailableYears(years);
+          setAvailableYears(yearsWithTestData.length ? yearsWithTestData : years);
           setRowsByYear(nextRowsByYear);
         }
       } catch (err) {
@@ -515,12 +608,21 @@ export default function TestResultPage({
   const isNumericTrend = testKey === "Blood Glucose" || testKey === "BMI";
 
   const buildGroupChart = (
-    groupKey: "Department" | "Section",
+    groupKey: "Factory" | "Department" | "Section",
     rows: HealthRow[],
   ) => {
     const grouped = new Map<string, Record<string, number>>();
     rows.forEach((row) => {
-      const groupName = normalizeValue(row[groupKey]) || "Unspecified";
+      const groupName =
+        groupKey === "Factory"
+          ? Number(row.FactoryId) === 1
+            ? "TS"
+            : Number(row.FactoryId) === 2
+              ? "TL"
+              : Number(row.FactoryId) === 3
+                ? "KK"
+                : "Unspecified"
+          : normalizeValue(row[groupKey]) || "Unspecified";
       const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
       if (!grouped.has(groupName)) {
         grouped.set(
@@ -547,10 +649,23 @@ export default function TestResultPage({
     [overviewRowsForDepartmentChart, testKey, fallbackKeys],
   );
 
+  const factoryChart = useMemo(
+    () => buildGroupChart("Factory", overviewRowsForDepartmentChart),
+    [overviewRowsForDepartmentChart, testKey, fallbackKeys],
+  );
+
   const sectionChart = useMemo(
     () => buildGroupChart("Section", overviewRows),
     [overviewRows, testKey, fallbackKeys],
   );
+
+  const overviewFactoryPieData = useMemo(() => {
+    const first = factoryChart[0] as Record<string, unknown> | undefined;
+    if (!first) return [];
+    return categorySeries
+      .map((item) => ({ key: item.key, name: item.name, value: Number(first[item.key] ?? 0) }))
+      .filter((item) => item.value > 0);
+  }, [factoryChart, categorySeries]);
 
   const singleSectionName = useMemo(() => {
     if (overviewSection) return overviewSection;
@@ -879,7 +994,55 @@ export default function TestResultPage({
               </div>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="mb-3 text-lg font-semibold text-gray-800">
+                  สัดส่วน {title} ตาม Factory
+                </div>
+                <div className="h-72">
+                  {factoryChart.length === 1 ? (
+                    overviewFactoryPieData.length ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={overviewFactoryPieData} dataKey="value" nameKey="name" outerRadius={95} label>
+                            {overviewFactoryPieData.map((entry) => (
+                              <Cell key={entry.key} fill={PIE_COLORS[entry.key] ?? "#94A3B8"} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                        ไม่มีกลุ่มข้อมูล
+                      </div>
+                    )
+                  ) : factoryChart.length ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={factoryChart}>
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Legend />
+                        {categorySeries.map((item) => (
+                          <Bar
+                            key={item.key}
+                            dataKey={item.key}
+                            name={item.name}
+                            fill={PIE_COLORS[item.key] ?? "#94A3B8"}
+                            stackId="test"
+                          />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                      ไม่มีกลุ่มข้อมูล
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="mb-3 text-lg font-semibold text-gray-800">
                   {overviewDepartment
