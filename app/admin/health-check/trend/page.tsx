@@ -1,4 +1,4 @@
-export default function Trend() {
+﻿export default function Trend() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="mx-auto max-w-6xl px-6 pt-18 pb-8">
@@ -6,7 +6,7 @@ export default function Trend() {
           <div className="flex flex-col items-center justify-center text-center py-12">
             <div className="mb-4">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100">
-                <span className="text-2xl">🚀</span>
+                <span className="text-2xl">🚧</span>
               </div>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">

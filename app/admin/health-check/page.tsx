@@ -1,4 +1,4 @@
-//app/dashboard/health-check/page.tsx
+﻿//app/dashboard/health-check/page.tsx
 import Link from "next/link";
 
 
@@ -8,7 +8,7 @@ export default function HealthCheckHub() {
     <div className="min-h-screen bg-gray-50">
 
 
-      <main className="mx-auto max-w-6xl px6 pt-18 pb-8">
+      <main className="mx-auto max-w-6xl px-6 pt-18 pb-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/admin/health-check/health-risk"
@@ -47,3 +47,4 @@ export default function HealthCheckHub() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -298,14 +298,14 @@ export default function RiskReport() {
           <div className="rounded-2xl border bg-white p-5">
             <div className="text-base font-semibold uppercase">Employees</div>
             <div className="mt-2 text-3xl font-semibold">
-              {loading ? "Loading…" : totals.employees.toLocaleString("en-US")}
+              {loading ? "Loadingโ€ฆ" : totals.employees.toLocaleString("en-US")}
             </div>
 
           </div>
           <div className="rounded-2xl border bg-white p-5">
             <div className="text-base font-semibold uppercase ">BMI categories</div>
             {loading ? (
-              <div className="mt-2 text-sm text-gray-500">Loading…</div>
+              <div className="mt-2 text-sm text-gray-500">Loadingโ€ฆ</div>
             ) : (
               <div className="mt-2 space-y-1 text-sm text-gray-600">
                 {bmiData.map((item) => (
@@ -320,7 +320,7 @@ export default function RiskReport() {
           <div className="rounded-2xl border bg-white p-5">
             <div className="text-base font-semibold uppercase ">Blood pressure</div>
             {loading ? (
-              <div className="mt-2 text-sm text-gray-500">Loading…</div>
+              <div className="mt-2 text-sm text-gray-500">Loadingโ€ฆ</div>
             ) : (
               <div className="mt-2 space-y-1 text-sm text-gray-600">
                 {bpData.map((item) => (
@@ -404,7 +404,7 @@ export default function RiskReport() {
             <div className="h-72">
               {loading ? (
                 <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                  Loading…
+                  Loadingโ€ฆ
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -424,7 +424,7 @@ export default function RiskReport() {
             <div className="h-72">
               {loading ? (
                 <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                  Loading…
+                  Loadingโ€ฆ
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -448,7 +448,7 @@ export default function RiskReport() {
           <div className="h-80">
             {loading ? (
               <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                Loading…
+                Loadingโ€ฆ
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -470,3 +470,4 @@ export default function RiskReport() {
     </div>
   );
 }
+

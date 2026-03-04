@@ -172,7 +172,17 @@ const getDisplayValue = (value: string, testKey: string) => {
   return value;
 };
 
-const getResultNumberDisplay = (value: string) => {
+const getResultNumberDisplay = (value: string, testKey: string) => {
+  if (testKey === "Blood Pressure") {
+    const bpMatch = value.match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
+    if (bpMatch) {
+      return `${bpMatch[1]}/${bpMatch[2]}`;
+    }
+    const normalized = value.trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
   const numeric = parseNumeric(value);
   return numeric === null ? "-" : numeric.toString();
 };
@@ -384,6 +394,12 @@ export default function TestResultPage({
     const bucket = categorizeNormalAbnormal(raw, testKey);
     return { raw, bucket };
   }, [rowsByYear, selectedEmpId, selectedYear, testKey, fallbackKeys]);
+
+  const resultDisplay = selectedResult ? getResultNumberDisplay(selectedResult.raw, testKey) : "-";
+  const hasBloodPressureNumeric = selectedResult
+    ? /(\d{2,3})\s*\/\s*(\d{2,3})/.test(selectedResult.raw)
+    : false;
+  const showResultCard = testKey !== "Blood Pressure" || hasBloodPressureNumeric;
 
   const trend = useMemo(() => {
     if (!selectedEmpId) return [];
@@ -636,12 +652,12 @@ export default function TestResultPage({
                   </label>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs text-slate-600">ผลตรวจ</div>
-                    <div className="mt-2 text-2xl font-semibold text-slate-900">
-                      {selectedResult ? getResultNumberDisplay(selectedResult.raw) : "-"}
+                  {showResultCard ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="text-xs text-slate-600">ผลตรวจ</div>
+                      <div className="mt-2 text-2xl font-semibold text-slate-900">{resultDisplay}</div>
                     </div>
-                  </div>
+                  ) : null}
                   <div
                     className={
                       selectedResult?.bucket === "normal"
@@ -653,7 +669,7 @@ export default function TestResultPage({
                           : "rounded-xl border border-gray-200 bg-gray-50 p-4"
                     }
                   >
-                    <div className="text-xs text-slate-600">หมวด</div>
+                    <div className="text-xs text-slate-600">ผลตรวจ</div>
                     <div
                       className={
                         selectedResult?.bucket === "normal"
