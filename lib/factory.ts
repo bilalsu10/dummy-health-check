@@ -4,6 +4,7 @@ const FACTORY_LABEL_TO_ID: Record<string, number> = {
   TS: 1,
   TL: 2,
   KK: 3,
+  BS: 4,
 };
 
 const parseFactoryText = (raw: string): number | null => {
@@ -18,6 +19,7 @@ const parseFactoryText = (raw: string): number | null => {
   if (upper.includes("TS")) return 1;
   if (upper.includes("TL")) return 2;
   if (upper.includes("KK")) return 3;
+  if (upper.includes("BS")) return 4;
 
   const numeric = Number(upper);
   if (Number.isFinite(numeric)) return numeric;
@@ -51,5 +53,6 @@ export const factoryLabelFromRow = (row: RowLike): string => {
   if (id === 1) return "TS";
   if (id === 2) return "TL";
   if (id === 3) return "KK";
+  if (id === 4) return "BS";
   return "Unspecified";
 };

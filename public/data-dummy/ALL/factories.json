@@ -1,1 +1,18 @@
-[{"factory_id":1,"factory_name":"??????"},{"factory_id":2,"factory_name":"???????"},{"factory_id":3,"factory_name":"???????"}]
+[
+    {
+        "factory_id":  "1",
+        "factory_name":  "??????"
+    },
+    {
+        "factory_id":  "2",
+        "factory_name":  "???????"
+    },
+    {
+        "factory_id":  "3",
+        "factory_name":  "???????"
+    },
+    {
+        "factory_id":  "4",
+        "factory_name":  "BS"
+    }
+]

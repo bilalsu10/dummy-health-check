@@ -47,6 +47,10 @@ const PIE_COLORS: Record<string, string> = {
   abnormal: "#DC2626",
   high: "#DC2626",
   low: "#F59E0B",
+  cholesterolHigh: "#DC2626",
+  triglycerideHigh: "#EA580C",
+  hdlLow: "#D97706",
+  ldlHigh: "#B91C1C",
   notTested: "#6B7280",
   other: "#94A3B8",
 };
@@ -86,6 +90,35 @@ const parseNumeric = (value: string) => {
   return Number.isFinite(numeric) ? numeric : null;
 };
 
+const parseLipidParts = (value: string) => {
+  const parts = value.split(",").map((part) => part.trim());
+  const toNum = (raw: string) => {
+    const n = Number(String(raw ?? "").replace("<", "").trim());
+    return Number.isFinite(n) ? n : null;
+  };
+  const tc = toNum(parts[0] ?? "");
+  const tg = toNum(parts[1] ?? "");
+  const hdl = toNum(parts[2] ?? "");
+  const ldl = toNum(parts[3] ?? "");
+  const summary = parts.slice(4).join(",").trim();
+
+  const abnormalities: string[] = [];
+  if (summary) {
+    if (summary.includes("ไขมันคลอเลสเตอรอลสูง")) abnormalities.push("ไขมันคลอเลสเตอรอลสูง");
+    if (summary.includes("ไขมันไตรกลีเซอไรด์สูง")) abnormalities.push("ไขมันไตรกลีเซอไรด์สูง");
+    if (summary.includes("ไขมัน HDL ต่ำกว่าปกติ")) abnormalities.push("ไขมัน HDL ต่ำกว่าปกติ");
+    if (summary.includes("ไขมันตัวร้าย (LDL) สูง")) abnormalities.push("ไขมันตัวร้าย (LDL) สูง");
+  }
+  if (!abnormalities.length) {
+    if (tc !== null && tc >= 200) abnormalities.push("ไขมันคลอเลสเตอรอลสูง");
+    if (tg !== null && tg >= 150) abnormalities.push("ไขมันไตรกลีเซอไรด์สูง");
+    if (hdl !== null && hdl < 35) abnormalities.push("ไขมัน HDL ต่ำกว่าปกติ");
+    if (ldl !== null && ldl >= 150) abnormalities.push("ไขมันตัวร้าย (LDL) สูง");
+  }
+
+  return { tc, tg, hdl, ldl, summary, abnormalities };
+};
+
 const categorizeNormalAbnormal = (value: string, testKey: string) => {
   if (isNotTested(value)) return "notTested";
   if (testKey === "Blood Pressure") {
@@ -99,6 +132,28 @@ const categorizeNormalAbnormal = (value: string, testKey: string) => {
     if (numeric === null) return "other";
     if (numeric < 18.5) return "low";
     if (numeric > 22.99) return "high";
+    return "normal";
+  }
+  if (testKey === "Lipid Profile") {
+    const { tc, tg, hdl, ldl, summary, abnormalities } = parseLipidParts(value);
+
+    // 1) Prefer explicit summary text when present.
+    if (summary) {
+      if (abnormalities.includes("ไขมันคลอเลสเตอรอลสูง")) return "cholesterolHigh";
+      if (abnormalities.includes("ไขมันไตรกลีเซอไรด์สูง")) return "triglycerideHigh";
+      if (abnormalities.includes("ไขมัน HDL ต่ำกว่าปกติ")) return "hdlLow";
+      if (abnormalities.includes("ไขมันตัวร้าย (LDL) สูง")) return "ldlHigh";
+      if (summary.includes("ปกติ")) return "normal";
+    }
+
+    // 2) Fallback to numeric threshold rules.
+    const hasAnyNumeric = [tc, tg, hdl, ldl].some((n) => n !== null);
+    if (!hasAnyNumeric) return "other";
+
+    if (tc !== null && tc >= 200) return "cholesterolHigh";
+    if (tg !== null && tg >= 150) return "triglycerideHigh";
+    if (hdl !== null && hdl < 35) return "hdlLow";
+    if (ldl !== null && ldl >= 150) return "ldlHigh";
     return "normal";
   }
   const threshold = NUMERIC_THRESHOLDS[testKey];
@@ -187,6 +242,14 @@ const categoryLabel = (bucket: string) => {
       return "ความดันต่ำ";
     case "abnormal":
       return "ผิดปกติ";
+    case "cholesterolHigh":
+      return "ไขมันคลอเลสเตอรอลสูง";
+    case "triglycerideHigh":
+      return "ไขมันไตรกลีเซอไรด์สูง";
+    case "hdlLow":
+      return "ไขมัน HDL ต่ำกว่าปกติ";
+    case "ldlHigh":
+      return "ไขมันตัวร้าย (LDL) สูง";
     case "notTested":
       return "ไม่ได้รับการตรวจ";
     default:
@@ -194,7 +257,12 @@ const categoryLabel = (bucket: string) => {
   }
 };
 
-const categoryLabelFromValue = (value: string, bucket: string) => {
+const categoryLabelFromValue = (value: string, bucket: string, testKey?: string) => {
+  if (testKey === "Lipid Profile") {
+    const { abnormalities, summary } = parseLipidParts(value);
+    if (abnormalities.length) return abnormalities.join(" - ");
+    if (summary.includes("ปกติ")) return "ปกติ";
+  }
   if (bucket === "high" && value.includes("ความดัน")) return "ความดันโลหิตสูง";
   if (bucket === "low" && value.includes("ความดัน")) return "ความดันโลหิตต่ำ";
   if (bucket === "high") return "สูงกว่าเกณฑ์ปกติ";
@@ -205,6 +273,10 @@ const categoryLabelFromValue = (value: string, bucket: string) => {
     if (value.includes("สูงกว่าปกติ")) return "สูงกว่าปกติ";
     if (value.includes("ต่ำกว่าปกติ")) return "ต่ำกว่าปกติ";
   }
+  if (bucket === "cholesterolHigh") return "ไขมันคลอเลสเตอรอลสูง";
+  if (bucket === "triglycerideHigh") return "ไขมันไตรกลีเซอไรด์สูง";
+  if (bucket === "hdlLow") return "ไขมัน HDL ต่ำกว่าปกติ";
+  if (bucket === "ldlHigh") return "ไขมันตัวร้าย (LDL) สูง";
   return categoryLabel(bucket);
 };
 
@@ -222,7 +294,15 @@ const trendValue = (value: string, testKey: string) => {
   }
   const bucket = categorizeNormalAbnormal(value, testKey);
   if (bucket === "normal") return 0.6;
-  if (bucket === "abnormal") return 1;
+  if (
+    bucket === "abnormal" ||
+    bucket === "cholesterolHigh" ||
+    bucket === "triglycerideHigh" ||
+    bucket === "hdlLow" ||
+    bucket === "ldlHigh"
+  ) {
+    return 1;
+  }
   return null;
 };
 
@@ -272,6 +352,11 @@ const getResultNumberDisplay = (value: string, testKey: string) => {
       return normalized;
     }
   }
+  if (testKey === "Lipid Profile") {
+    const parts = value.split(",").map((part) => part.trim());
+    const numbers = parts.slice(0, 4).filter(Boolean);
+    return numbers.length ? numbers.join(",") : "-";
+  }
   const numeric = parseNumeric(value);
   return numeric === null ? "-" : numeric.toString();
 };
@@ -288,7 +373,11 @@ const TrendTooltip = ({ active, payload, testKey }: TrendTooltipProps) => {
   if (!point) return null;
 
   const textColor =
-    point.bucket === "abnormal"
+    point.bucket === "abnormal" ||
+    point.bucket === "cholesterolHigh" ||
+    point.bucket === "triglycerideHigh" ||
+    point.bucket === "hdlLow" ||
+    point.bucket === "ldlHigh"
       ? "text-red-700"
       : point.bucket === "normal"
         ? "text-emerald-700"
@@ -302,7 +391,7 @@ const TrendTooltip = ({ active, payload, testKey }: TrendTooltipProps) => {
   return (
     <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
       <div className={`font-semibold ${textColor}`}>
-        {shownValue} {categoryLabelFromValue(point.raw ?? "", point.bucket ?? "other")}
+        {shownValue} {categoryLabelFromValue(point.raw ?? "", point.bucket ?? "other", testKey)}
       </div>
     </div>
   );
@@ -316,6 +405,7 @@ export default function TestResultPage({
 }: TestResultPageProps) {
   const isBloodPressure = testKey === "Blood Pressure";
   const isBMI = testKey === "BMI";
+  const isLipid = testKey === "Lipid Profile";
   const categorySeries = isBloodPressure
     ? [
         { key: "normal", name: "ปกติ" },
@@ -332,7 +422,17 @@ export default function TestResultPage({
           { key: "notTested", name: "ไม่ได้รับการตรวจ" },
           { key: "other", name: "อื่นๆ" },
         ]
-    : [
+    : isLipid
+      ? [
+          { key: "normal", name: "ปกติ" },
+          { key: "cholesterolHigh", name: "ไขมันคลอเลสเตอรอลสูง" },
+          { key: "triglycerideHigh", name: "ไขมันไตรกลีเซอไรด์สูง" },
+          { key: "hdlLow", name: "ไขมัน HDL ต่ำกว่าปกติ" },
+          { key: "ldlHigh", name: "ไขมันตัวร้าย (LDL) สูง" },
+          { key: "notTested", name: "ไม่ได้รับการตรวจ" },
+          { key: "other", name: "อื่นๆ" },
+        ]
+      : [
         { key: "normal", name: "ปกติ" },
         { key: "abnormal", name: "ผิดปกติ" },
         { key: "notTested", name: "ไม่ได้รับการตรวจ" },
@@ -489,7 +589,7 @@ export default function TestResultPage({
   const hasBloodPressureNumeric = selectedResult
     ? /(\d{2,3})\s*\/\s*(\d{2,3})/.test(selectedResult.raw)
     : false;
-  const showResultCard = testKey !== "Blood Pressure" || hasBloodPressureNumeric;
+  const showResultCard = (testKey !== "Blood Pressure" || hasBloodPressureNumeric) && testKey !== "Lipid Profile";
 
   const trend = useMemo(() => {
     if (!selectedEmpId) return [];
@@ -688,6 +788,7 @@ export default function TestResultPage({
                 <option value={1}>TS</option>
                 <option value={2}>TL</option>
                 <option value={3}>KK</option>
+                <option value={4}>BS</option>
               </select>
             </label>
             <label className="flex flex-col gap-2 text-sm text-gray-600 md:flex-1">
@@ -788,11 +889,55 @@ export default function TestResultPage({
                       }
                     >
                       {selectedResult
-                        ? categoryLabelFromValue(selectedResult.raw, selectedResult.bucket)
+                        ? categoryLabelFromValue(selectedResult.raw, selectedResult.bucket, testKey)
                         : categoryLabel("other")}
                     </div>
                   </div>
                 </div>
+                {isLipid && selectedResult ? (
+                  <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="mb-2 text-sm font-semibold text-gray-800">รายละเอียดค่าไขมัน (Array)</div>
+                    {(() => {
+                      const lipid = parseLipidParts(selectedResult.raw);
+                      const items = [
+                        { label: "Total Cholesterol", value: lipid.tc, abnormal: lipid.tc !== null && lipid.tc >= 200 },
+                        { label: "Triglyceride", value: lipid.tg, abnormal: lipid.tg !== null && lipid.tg >= 150 },
+                        { label: "HDL", value: lipid.hdl, abnormal: lipid.hdl !== null && lipid.hdl < 35 },
+                        { label: "LDL", value: lipid.ldl, abnormal: lipid.ldl !== null && lipid.ldl >= 150 },
+                      ];
+                      return (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
+                                <th className="py-2">รายการ</th>
+                                <th className="py-2">ค่า</th>
+                                <th className="py-2">สถานะ</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {items.map((item) => (
+                                <tr key={item.label} className="border-b border-gray-100">
+                                  <td className="py-2">{item.label}</td>
+                                  <td className="py-2">{item.value ?? "-"}</td>
+                                  <td className={`py-2 font-semibold ${item.abnormal ? "text-red-700" : "text-emerald-700"}`}>
+                                    {item.value === null ? "-" : item.abnormal ? "ผิดปกติ" : "ปกติ"}
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr>
+                                <td className="py-2">สรุป</td>
+                                <td className="py-2" colSpan={2}>
+                                  {categoryLabelFromValue(selectedResult.raw, selectedResult.bucket, testKey)}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : null}
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -824,7 +969,13 @@ export default function TestResultPage({
                           if (typeof cx !== "number" || typeof cy !== "number") return null;
                           const bucket = String(payload?.bucket ?? "");
                           const fill =
-                            bucket === "abnormal" || bucket === "high" || bucket === "low"
+                            bucket === "abnormal" ||
+                            bucket === "high" ||
+                            bucket === "low" ||
+                            bucket === "cholesterolHigh" ||
+                            bucket === "triglycerideHigh" ||
+                            bucket === "hdlLow" ||
+                            bucket === "ldlHigh"
                               ? "#DC2626"
                               : "#2563EB";
                           return (
@@ -842,7 +993,13 @@ export default function TestResultPage({
                           if (typeof cx !== "number" || typeof cy !== "number") return null;
                           const bucket = String(payload?.bucket ?? "");
                           const fill =
-                            bucket === "abnormal" || bucket === "high" || bucket === "low"
+                            bucket === "abnormal" ||
+                            bucket === "high" ||
+                            bucket === "low" ||
+                            bucket === "cholesterolHigh" ||
+                            bucket === "triglycerideHigh" ||
+                            bucket === "hdlLow" ||
+                            bucket === "ldlHigh"
                               ? "#DC2626"
                               : "#2563EB";
                           return (
@@ -959,6 +1116,33 @@ export default function TestResultPage({
                         <div className="text-xs text-yellow-700">{isBloodPressure ? "ความดันต่ำ" : "ต่ำกว่าเกณฑ์ปกติ"}</div>
                         <div className="mt-2 text-2xl font-semibold text-yellow-900">
                           {summaryOverview.low ?? 0}
+                        </div>
+                      </div>
+                    </>
+                  ) : isLipid ? (
+                    <>
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                        <div className="text-xs text-red-700">ไขมันคลอเลสเตอรอลสูง</div>
+                        <div className="mt-2 text-2xl font-semibold text-red-900">
+                          {summaryOverview.cholesterolHigh ?? 0}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                        <div className="text-xs text-orange-700">ไขมันไตรกลีเซอไรด์สูง</div>
+                        <div className="mt-2 text-2xl font-semibold text-orange-900">
+                          {summaryOverview.triglycerideHigh ?? 0}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <div className="text-xs text-amber-700">ไขมัน HDL ต่ำกว่าปกติ</div>
+                        <div className="mt-2 text-2xl font-semibold text-amber-900">
+                          {summaryOverview.hdlLow ?? 0}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                        <div className="text-xs text-rose-700">ไขมันตัวร้าย (LDL) สูง</div>
+                        <div className="mt-2 text-2xl font-semibold text-rose-900">
+                          {summaryOverview.ldlHigh ?? 0}
                         </div>
                       </div>
                     </>

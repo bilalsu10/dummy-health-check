@@ -1,1 +1,967 @@
-[{"section_id":1,"section_name":"0","department_id":2},{"section_id":2,"section_name":"Alternative Fuel Sourcing - TS","department_id":3},{"section_id":3,"section_name":"LAB TS","department_id":4},{"section_id":4,"section_name":"Autonomous Maintenance","department_id":5},{"section_id":5,"section_name":"BSE - CSC","department_id":6},{"section_id":6,"section_name":"BSE South Chain","department_id":7},{"section_id":7,"section_name":"CS Operation","department_id":8},{"section_id":8,"section_name":"Construction Management","department_id":8},{"section_id":9,"section_name":"Design and Engineering","department_id":8},{"section_id":10,"section_name":"Drawing and Eco-System Management","department_id":8},{"section_id":11,"section_name":"Cement Plant - TS","department_id":9},{"section_id":12,"section_name":"Industry 4.0","department_id":9},{"section_id":13,"section_name":"Mining & Circularity Operation - TS","department_id":9},{"section_id":14,"section_name":"Operations - TS","department_id":9},{"section_id":15,"section_name":"พัสดุ","department_id":9},{"section_id":16,"section_name":"Co-Creation and Operation Development","department_id":10},{"section_id":17,"section_name":"Construction Solution System & Process","department_id":11},{"section_id":18,"section_name":"Contractor Management","department_id":12},{"section_id":19,"section_name":"0","department_id":13},{"section_id":20,"section_name":"Grey Cement - STS","department_id":13},{"section_id":21,"section_name":"Digital Transformation","department_id":14},{"section_id":22,"section_name":"E2E Value Creation","department_id":14},{"section_id":23,"section_name":"Value-Based Customer Creation","department_id":14},{"section_id":24,"section_name":"Digital Transformation","department_id":15},{"section_id":25,"section_name":"IT Share Service","department_id":15},{"section_id":26,"section_name":"Store Management","department_id":15},{"section_id":27,"section_name":"E2E Supply Chain","department_id":16},{"section_id":28,"section_name":"Green Fuel Sourcing - South","department_id":18},{"section_id":29,"section_name":"Human Capital","department_id":19},{"section_id":30,"section_name":"Community & Government Relation","department_id":20},{"section_id":31,"section_name":"License to Operate","department_id":20},{"section_id":32,"section_name":"Safety & Environment","department_id":20},{"section_id":33,"section_name":"Alternative Fuel & Solar","department_id":22},{"section_id":34,"section_name":"Cement Mill & Packer & Mortar","department_id":22},{"section_id":35,"section_name":"Cement Mill & Packer & Mortar & RDF","department_id":22},{"section_id":36,"section_name":"Civil","department_id":22},{"section_id":37,"section_name":"Customer Design Solution","department_id":22},{"section_id":38,"section_name":"Kiln","department_id":22},{"section_id":39,"section_name":"Kiln & WHG","department_id":22},{"section_id":40,"section_name":"Lignite Mill & Alternative Fuel","department_id":22},{"section_id":41,"section_name":"Lignite Mill & WHG","department_id":22},{"section_id":42,"section_name":"Measurement and Analysis","department_id":22},{"section_id":43,"section_name":"Project Execution","department_id":22},{"section_id":44,"section_name":"Raw Material & Raw Mill","department_id":22},{"section_id":45,"section_name":"Workshop","department_id":22},{"section_id":46,"section_name":"Maintenance Repair Overhaul - South","department_id":23},{"section_id":47,"section_name":"Maintenance Overhaul and Consultancy","department_id":24},{"section_id":48,"section_name":"Maintenance Repair Overhaul - South","department_id":24},{"section_id":49,"section_name":"Plant Maintenance","department_id":24},{"section_id":50,"section_name":"MRO - TS","department_id":25},{"section_id":51,"section_name":"Maintenance Strategic Management","department_id":26},{"section_id":52,"section_name":"Maintenance Workshop Service","department_id":27},{"section_id":53,"section_name":"Fuel and Biomass Preparation","department_id":28},{"section_id":54,"section_name":"Mine Maintenance","department_id":28},{"section_id":55,"section_name":"Mine Operation","department_id":28},{"section_id":56,"section_name":"Mine Planning And Rehabilitation","department_id":28},{"section_id":57,"section_name":"Mine Processing","department_id":28},{"section_id":58,"section_name":"Raw Material Preparation","department_id":28},{"section_id":59,"section_name":"Smart Mining and Service Solution","department_id":28},{"section_id":60,"section_name":"Waste Preparation","department_id":28},{"section_id":61,"section_name":"New Business","department_id":29},{"section_id":62,"section_name":"Design Solution and Execution -South","department_id":33},{"section_id":63,"section_name":"Biomass","department_id":34},{"section_id":64,"section_name":"Fuel and AFR","department_id":34},{"section_id":65,"section_name":"Operations","department_id":34},{"section_id":66,"section_name":"Quality Assurance","department_id":34},{"section_id":67,"section_name":"บรรจุและจ่ายซีเมนต์","department_id":34},{"section_id":68,"section_name":"บริการลูกค้า","department_id":34},{"section_id":69,"section_name":"ผลิตซีเมนต์","department_id":34},{"section_id":70,"section_name":"ผลิตถุงปูนซีเมนต์","department_id":34},{"section_id":71,"section_name":"ผลิตปูนเม็ด TS4","department_id":34},{"section_id":72,"section_name":"ผลิตปูนเม็ด TS5","department_id":34},{"section_id":73,"section_name":"ผลิตปูนเม็ด TS6","department_id":34},{"section_id":74,"section_name":"ผลิตมอร์ตาร์","department_id":34},{"section_id":75,"section_name":"ผลิตไฟฟ้า","department_id":34},{"section_id":76,"section_name":"Cement Mill","department_id":35},{"section_id":77,"section_name":"Clinkering - TS4","department_id":35},{"section_id":78,"section_name":"Clinkering - TS5","department_id":35},{"section_id":79,"section_name":"Clinkering - TS6","department_id":35},{"section_id":80,"section_name":"Dispatching and Customer Service","department_id":35},{"section_id":81,"section_name":"Mortar","department_id":35},{"section_id":82,"section_name":"Paper Bag","department_id":35},{"section_id":83,"section_name":"ผลิตถุงปูนซีเมนต์","department_id":35},{"section_id":84,"section_name":"Ecosystem","department_id":36},{"section_id":85,"section_name":"Human Capabilities & Engagement","department_id":36},{"section_id":86,"section_name":"Human Resources Management","department_id":36},{"section_id":87,"section_name":"Lab Automation","department_id":38},{"section_id":88,"section_name":"QA Clinker & Cement","department_id":38},{"section_id":89,"section_name":"Smart Store","department_id":38},{"section_id":90,"section_name":"Quarry","department_id":39},{"section_id":91,"section_name":"จัดเตรียมวัตถุดิบ","department_id":39},{"section_id":92,"section_name":"ซ่อมบำรุงจักรกลหนัก","department_id":39},{"section_id":93,"section_name":"ผลิตหินก่อนย่อย","department_id":39},{"section_id":94,"section_name":"ผลิตหินย่อยและหินก่อสร้าง","department_id":39},{"section_id":95,"section_name":"วางแผนพัฒนาและฟื้นฟูเหมือง","department_id":39},{"section_id":96,"section_name":"Shutdown - Mechanical","department_id":40},{"section_id":97,"section_name":"Maintenance Reliable Service","department_id":43},{"section_id":98,"section_name":"Autonomous Maintenance","department_id":44},{"section_id":99,"section_name":"Industry 4.0","department_id":44},{"section_id":100,"section_name":"Autonomous Maintenance","department_id":45},{"section_id":101,"section_name":"Industry 4.0","department_id":45},{"section_id":102,"section_name":"South Chain","department_id":47},{"section_id":103,"section_name":"Strategic People Management","department_id":48},{"section_id":104,"section_name":"ESG","department_id":49},{"section_id":105,"section_name":"License to Operate","department_id":49},{"section_id":106,"section_name":"ESG","department_id":50},{"section_id":107,"section_name":"License to Operate","department_id":50},{"section_id":108,"section_name":"Value-Based Co-Creation","department_id":51}]
+[
+    {
+        "section_id":  "1",
+        "section_name":  "0",
+        "department_id":  "2"
+    },
+    {
+        "section_id":  "2",
+        "section_name":  "Alternative Fuel Sourcing - TS",
+        "department_id":  "3"
+    },
+    {
+        "section_id":  "3",
+        "section_name":  "LAB TS",
+        "department_id":  "4"
+    },
+    {
+        "section_id":  "4",
+        "section_name":  "Autonomous Maintenance",
+        "department_id":  "5"
+    },
+    {
+        "section_id":  "5",
+        "section_name":  "BSE - CSC",
+        "department_id":  "6"
+    },
+    {
+        "section_id":  "6",
+        "section_name":  "BSE South Chain",
+        "department_id":  "7"
+    },
+    {
+        "section_id":  "7",
+        "section_name":  "CS Operation",
+        "department_id":  "8"
+    },
+    {
+        "section_id":  "8",
+        "section_name":  "Construction Management",
+        "department_id":  "8"
+    },
+    {
+        "section_id":  "9",
+        "section_name":  "Design and Engineering",
+        "department_id":  "8"
+    },
+    {
+        "section_id":  "10",
+        "section_name":  "Drawing and Eco-System Management",
+        "department_id":  "8"
+    },
+    {
+        "section_id":  "11",
+        "section_name":  "Cement Plant - TS",
+        "department_id":  "9"
+    },
+    {
+        "section_id":  "12",
+        "section_name":  "Industry 4.0",
+        "department_id":  "9"
+    },
+    {
+        "section_id":  "13",
+        "section_name":  "Mining \u0026 Circularity Operation - TS",
+        "department_id":  "9"
+    },
+    {
+        "section_id":  "14",
+        "section_name":  "Operations - TS",
+        "department_id":  "9"
+    },
+    {
+        "section_id":  "15",
+        "section_name":  "พัสดุ",
+        "department_id":  "9"
+    },
+    {
+        "section_id":  "16",
+        "section_name":  "Co-Creation and Operation Development",
+        "department_id":  "10"
+    },
+    {
+        "section_id":  "17",
+        "section_name":  "Construction Solution System \u0026 Process",
+        "department_id":  "11"
+    },
+    {
+        "section_id":  "18",
+        "section_name":  "Contractor Management",
+        "department_id":  "12"
+    },
+    {
+        "section_id":  "19",
+        "section_name":  "0",
+        "department_id":  "13"
+    },
+    {
+        "section_id":  "20",
+        "section_name":  "Grey Cement - STS",
+        "department_id":  "13"
+    },
+    {
+        "section_id":  "21",
+        "section_name":  "Digital Transformation",
+        "department_id":  "14"
+    },
+    {
+        "section_id":  "22",
+        "section_name":  "E2E Value Creation",
+        "department_id":  "14"
+    },
+    {
+        "section_id":  "23",
+        "section_name":  "Value-Based Customer Creation",
+        "department_id":  "14"
+    },
+    {
+        "section_id":  "24",
+        "section_name":  "Digital Transformation",
+        "department_id":  "15"
+    },
+    {
+        "section_id":  "25",
+        "section_name":  "IT Share Service",
+        "department_id":  "15"
+    },
+    {
+        "section_id":  "26",
+        "section_name":  "Store Management",
+        "department_id":  "15"
+    },
+    {
+        "section_id":  "27",
+        "section_name":  "E2E Supply Chain",
+        "department_id":  "16"
+    },
+    {
+        "section_id":  "28",
+        "section_name":  "Green Fuel Sourcing - South",
+        "department_id":  "18"
+    },
+    {
+        "section_id":  "29",
+        "section_name":  "Human Capital",
+        "department_id":  "19"
+    },
+    {
+        "section_id":  "30",
+        "section_name":  "Community \u0026 Government Relation",
+        "department_id":  "20"
+    },
+    {
+        "section_id":  "31",
+        "section_name":  "License to Operate",
+        "department_id":  "20"
+    },
+    {
+        "section_id":  "32",
+        "section_name":  "Safety \u0026 Environment",
+        "department_id":  "20"
+    },
+    {
+        "section_id":  "33",
+        "section_name":  "Alternative Fuel \u0026 Solar",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "34",
+        "section_name":  "Cement Mill \u0026 Packer \u0026 Mortar",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "35",
+        "section_name":  "Cement Mill \u0026 Packer \u0026 Mortar \u0026 RDF",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "36",
+        "section_name":  "Civil",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "37",
+        "section_name":  "Customer Design Solution",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "38",
+        "section_name":  "Kiln",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "39",
+        "section_name":  "Kiln \u0026 WHG",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "40",
+        "section_name":  "Lignite Mill \u0026 Alternative Fuel",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "41",
+        "section_name":  "Lignite Mill \u0026 WHG",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "42",
+        "section_name":  "Measurement and Analysis",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "43",
+        "section_name":  "Project Execution",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "44",
+        "section_name":  "Raw Material \u0026 Raw Mill",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "45",
+        "section_name":  "Workshop",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "46",
+        "section_name":  "Maintenance Repair Overhaul - South",
+        "department_id":  "23"
+    },
+    {
+        "section_id":  "47",
+        "section_name":  "Maintenance Overhaul and Consultancy",
+        "department_id":  "24"
+    },
+    {
+        "section_id":  "48",
+        "section_name":  "Maintenance Repair Overhaul - South",
+        "department_id":  "24"
+    },
+    {
+        "section_id":  "49",
+        "section_name":  "Plant Maintenance",
+        "department_id":  "24"
+    },
+    {
+        "section_id":  "50",
+        "section_name":  "MRO - TS",
+        "department_id":  "25"
+    },
+    {
+        "section_id":  "51",
+        "section_name":  "Maintenance Strategic Management",
+        "department_id":  "26"
+    },
+    {
+        "section_id":  "52",
+        "section_name":  "Maintenance Workshop Service",
+        "department_id":  "27"
+    },
+    {
+        "section_id":  "53",
+        "section_name":  "Fuel and Biomass Preparation",
+        "department_id":  "28"
+    },
+    {
+        "section_id":  "54",
+        "section_name":  "Mine Maintenance",
+        "department_id":  "28"
+    },
+    {
+        "section_id":  "55",
+        "section_name":  "Mine Operation",
+        "department_id":  "28"
+    },
+    {
+        "section_id":  "56",
+        "section_name":  "Mine Planning And Rehabilitation",
+        "department_id":  "28"
+    },
+    {
+        "section_id":  "57",
+        "section_name":  "Mine Processing",
+        "department_id":  "28"
+    },
+    {
+        "section_id":  "58",
+        "section_name":  "Raw Material Preparation",
+        "department_id":  "28"
+    },
+    {
+        "section_id":  "59",
+        "section_name":  "Smart Mining and Service Solution",
+        "department_id":  "28"
+    },
+    {
+        "section_id":  "60",
+        "section_name":  "Waste Preparation",
+        "department_id":  "28"
+    },
+    {
+        "section_id":  "61",
+        "section_name":  "New Business",
+        "department_id":  "29"
+    },
+    {
+        "section_id":  "62",
+        "section_name":  "Design Solution and Execution -South",
+        "department_id":  "33"
+    },
+    {
+        "section_id":  "63",
+        "section_name":  "Biomass",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "64",
+        "section_name":  "Fuel and AFR",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "65",
+        "section_name":  "Operations",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "66",
+        "section_name":  "Quality Assurance",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "67",
+        "section_name":  "บรรจุและจ่ายซีเมนต์",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "68",
+        "section_name":  "บริการลูกค้า",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "69",
+        "section_name":  "ผลิตซีเมนต์",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "70",
+        "section_name":  "ผลิตถุงปูนซีเมนต์",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "71",
+        "section_name":  "ผลิตปูนเม็ด TS4",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "72",
+        "section_name":  "ผลิตปูนเม็ด TS5",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "73",
+        "section_name":  "ผลิตปูนเม็ด TS6",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "74",
+        "section_name":  "ผลิตมอร์ตาร์",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "75",
+        "section_name":  "ผลิตไฟฟ้า",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "76",
+        "section_name":  "Cement Mill",
+        "department_id":  "35"
+    },
+    {
+        "section_id":  "77",
+        "section_name":  "Clinkering - TS4",
+        "department_id":  "35"
+    },
+    {
+        "section_id":  "78",
+        "section_name":  "Clinkering - TS5",
+        "department_id":  "35"
+    },
+    {
+        "section_id":  "79",
+        "section_name":  "Clinkering - TS6",
+        "department_id":  "35"
+    },
+    {
+        "section_id":  "80",
+        "section_name":  "Dispatching and Customer Service",
+        "department_id":  "35"
+    },
+    {
+        "section_id":  "81",
+        "section_name":  "Mortar",
+        "department_id":  "35"
+    },
+    {
+        "section_id":  "82",
+        "section_name":  "Paper Bag",
+        "department_id":  "35"
+    },
+    {
+        "section_id":  "83",
+        "section_name":  "ผลิตถุงปูนซีเมนต์",
+        "department_id":  "35"
+    },
+    {
+        "section_id":  "84",
+        "section_name":  "Ecosystem",
+        "department_id":  "36"
+    },
+    {
+        "section_id":  "85",
+        "section_name":  "Human Capabilities \u0026 Engagement",
+        "department_id":  "36"
+    },
+    {
+        "section_id":  "86",
+        "section_name":  "Human Resources Management",
+        "department_id":  "36"
+    },
+    {
+        "section_id":  "87",
+        "section_name":  "Lab Automation",
+        "department_id":  "38"
+    },
+    {
+        "section_id":  "88",
+        "section_name":  "QA Clinker \u0026 Cement",
+        "department_id":  "38"
+    },
+    {
+        "section_id":  "89",
+        "section_name":  "Smart Store",
+        "department_id":  "38"
+    },
+    {
+        "section_id":  "90",
+        "section_name":  "Quarry",
+        "department_id":  "39"
+    },
+    {
+        "section_id":  "91",
+        "section_name":  "จัดเตรียมวัตถุดิบ",
+        "department_id":  "39"
+    },
+    {
+        "section_id":  "92",
+        "section_name":  "ซ่อมบำรุงจักรกลหนัก",
+        "department_id":  "39"
+    },
+    {
+        "section_id":  "93",
+        "section_name":  "ผลิตหินก่อนย่อย",
+        "department_id":  "39"
+    },
+    {
+        "section_id":  "94",
+        "section_name":  "ผลิตหินย่อยและหินก่อสร้าง",
+        "department_id":  "39"
+    },
+    {
+        "section_id":  "95",
+        "section_name":  "วางแผนพัฒนาและฟื้นฟูเหมือง",
+        "department_id":  "39"
+    },
+    {
+        "section_id":  "96",
+        "section_name":  "Shutdown - Mechanical",
+        "department_id":  "40"
+    },
+    {
+        "section_id":  "97",
+        "section_name":  "Maintenance Reliable Service",
+        "department_id":  "43"
+    },
+    {
+        "section_id":  "98",
+        "section_name":  "Autonomous Maintenance",
+        "department_id":  "44"
+    },
+    {
+        "section_id":  "99",
+        "section_name":  "Industry 4.0",
+        "department_id":  "44"
+    },
+    {
+        "section_id":  "100",
+        "section_name":  "Autonomous Maintenance",
+        "department_id":  "45"
+    },
+    {
+        "section_id":  "101",
+        "section_name":  "Industry 4.0",
+        "department_id":  "45"
+    },
+    {
+        "section_id":  "102",
+        "section_name":  "South Chain",
+        "department_id":  "47"
+    },
+    {
+        "section_id":  "103",
+        "section_name":  "Strategic People Management",
+        "department_id":  "48"
+    },
+    {
+        "section_id":  "104",
+        "section_name":  "ESG",
+        "department_id":  "49"
+    },
+    {
+        "section_id":  "105",
+        "section_name":  "License to Operate",
+        "department_id":  "49"
+    },
+    {
+        "section_id":  "106",
+        "section_name":  "ESG",
+        "department_id":  "50"
+    },
+    {
+        "section_id":  "107",
+        "section_name":  "License to Operate",
+        "department_id":  "50"
+    },
+    {
+        "section_id":  "108",
+        "section_name":  "Value-Based Co-Creation",
+        "department_id":  "51"
+    },
+    {
+        "section_id":  "109",
+        "section_name":  "-",
+        "department_id":  "52"
+    },
+    {
+        "section_id":  "110",
+        "section_name":  "-",
+        "department_id":  "53"
+    },
+    {
+        "section_id":  "111",
+        "section_name":  "-",
+        "department_id":  "54"
+    },
+    {
+        "section_id":  "112",
+        "section_name":  "-",
+        "department_id":  "55"
+    },
+    {
+        "section_id":  "113",
+        "section_name":  "-",
+        "department_id":  "35"
+    },
+    {
+        "section_id":  "114",
+        "section_name":  "-",
+        "department_id":  "38"
+    },
+    {
+        "section_id":  "115",
+        "section_name":  "Smart Store",
+        "department_id":  "55"
+    },
+    {
+        "section_id":  "116",
+        "section_name":  "-",
+        "department_id":  "28"
+    },
+    {
+        "section_id":  "117",
+        "section_name":  "-",
+        "department_id":  "22"
+    },
+    {
+        "section_id":  "118",
+        "section_name":  "-",
+        "department_id":  "49"
+    },
+    {
+        "section_id":  "119",
+        "section_name":  "-",
+        "department_id":  "40"
+    },
+    {
+        "section_id":  "120",
+        "section_name":  "-",
+        "department_id":  "17"
+    },
+    {
+        "section_id":  "121",
+        "section_name":  "-",
+        "department_id":  "31"
+    },
+    {
+        "section_id":  "122",
+        "section_name":  "-",
+        "department_id":  "1"
+    },
+    {
+        "section_id":  "123",
+        "section_name":  "BIM \u0026 Customer Value Creation - Lower",
+        "department_id":  "55"
+    },
+    {
+        "section_id":  "124",
+        "section_name":  "-",
+        "department_id":  "37"
+    },
+    {
+        "section_id":  "125",
+        "section_name":  "-",
+        "department_id":  "36"
+    },
+    {
+        "section_id":  "126",
+        "section_name":  "-",
+        "department_id":  "42"
+    },
+    {
+        "section_id":  "127",
+        "section_name":  "เทคโนโลยีสารสนเทศ",
+        "department_id":  "56"
+    },
+    {
+        "section_id":  "128",
+        "section_name":  "Plant Maintenance",
+        "department_id":  "23"
+    },
+    {
+        "section_id":  "129",
+        "section_name":  "Maintenance Overhaul and Consultancy - Electrical",
+        "department_id":  "23"
+    },
+    {
+        "section_id":  "130",
+        "section_name":  "BSE Operation - STS",
+        "department_id":  "57"
+    },
+    {
+        "section_id":  "131",
+        "section_name":  "ผลิตถุงกระดาษ",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "132",
+        "section_name":  "Maintenance Repair Overhaul - STS",
+        "department_id":  "23"
+    },
+    {
+        "section_id":  "133",
+        "section_name":  "วางแผนและพัฒนาเหมือง",
+        "department_id":  "39"
+    },
+    {
+        "section_id":  "134",
+        "section_name":  "จัดหาและเตรียมวัตถุดิบ",
+        "department_id":  "39"
+    },
+    {
+        "section_id":  "135",
+        "section_name":  "AFR",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "136",
+        "section_name":  "Measurement and Analysis",
+        "department_id":  "23"
+    },
+    {
+        "section_id":  "137",
+        "section_name":  "Fuel and Export",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "138",
+        "section_name":  "Maintenance Overhaul and Consultancy - Mechanical",
+        "department_id":  "23"
+    },
+    {
+        "section_id":  "139",
+        "section_name":  "ส่งเสริมการผลิต",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "140",
+        "section_name":  "Waste Heat Generator STS",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "141",
+        "section_name":  "Customer Value Creation",
+        "department_id":  "58"
+    },
+    {
+        "section_id":  "142",
+        "section_name":  "Supply Chain and Logistic Management",
+        "department_id":  "59"
+    },
+    {
+        "section_id":  "143",
+        "section_name":  "CAD",
+        "department_id":  "60"
+    },
+    {
+        "section_id":  "144",
+        "section_name":  "บริการงานจ้างเหมา",
+        "department_id":  "56"
+    },
+    {
+        "section_id":  "145",
+        "section_name":  "Facility Management",
+        "department_id":  "57"
+    },
+    {
+        "section_id":  "146",
+        "section_name":  "พัสดุ",
+        "department_id":  "56"
+    },
+    {
+        "section_id":  "147",
+        "section_name":  "Maintenance Overhaul and Consultancy - Refractory",
+        "department_id":  "23"
+    },
+    {
+        "section_id":  "148",
+        "section_name":  "Construction Solutions",
+        "department_id":  "58"
+    },
+    {
+        "section_id":  "149",
+        "section_name":  "Design Solution",
+        "department_id":  "33"
+    },
+    {
+        "section_id":  "150",
+        "section_name":  "Smart Maintenance Service",
+        "department_id":  "43"
+    },
+    {
+        "section_id":  "151",
+        "section_name":  "MD Office",
+        "department_id":  "56"
+    },
+    {
+        "section_id":  "152",
+        "section_name":  "Industry 4.0",
+        "department_id":  "56"
+    },
+    {
+        "section_id":  "153",
+        "section_name":  "Security Management",
+        "department_id":  "57"
+    },
+    {
+        "section_id":  "154",
+        "section_name":  "-",
+        "department_id":  "32"
+    },
+    {
+        "section_id":  "155",
+        "section_name":  "-",
+        "department_id":  "30"
+    },
+    {
+        "section_id":  "156",
+        "section_name":  "-",
+        "department_id":  "50"
+    },
+    {
+        "section_id":  "157",
+        "section_name":  "-",
+        "department_id":  "46"
+    },
+    {
+        "section_id":  "158",
+        "section_name":  "-",
+        "department_id":  "41"
+    },
+    {
+        "section_id":  "159",
+        "section_name":  "-",
+        "department_id":  "15"
+    },
+    {
+        "section_id":  "160",
+        "section_name":  "-",
+        "department_id":  "44"
+    },
+    {
+        "section_id":  "161",
+        "section_name":  "-",
+        "department_id":  "21"
+    },
+    {
+        "section_id":  "162",
+        "section_name":  "-",
+        "department_id":  "7"
+    },
+    {
+        "section_id":  "163",
+        "section_name":  "-",
+        "department_id":  "8"
+    },
+    {
+        "section_id":  "164",
+        "section_name":  "-",
+        "department_id":  "43"
+    },
+    {
+        "section_id":  "165",
+        "section_name":  "-",
+        "department_id":  "6"
+    },
+    {
+        "section_id":  "166",
+        "section_name":  "-",
+        "department_id":  "61"
+    },
+    {
+        "section_id":  "167",
+        "section_name":  "-",
+        "department_id":  "12"
+    },
+    {
+        "section_id":  "168",
+        "section_name":  "-",
+        "department_id":  "19"
+    },
+    {
+        "section_id":  "169",
+        "section_name":  "-",
+        "department_id":  "9"
+    },
+    {
+        "section_id":  "170",
+        "section_name":  "-",
+        "department_id":  "11"
+    },
+    {
+        "section_id":  "171",
+        "section_name":  "-",
+        "department_id":  "47"
+    },
+    {
+        "section_id":  "172",
+        "section_name":  "-",
+        "department_id":  "16"
+    },
+    {
+        "section_id":  "173",
+        "section_name":  "-",
+        "department_id":  "3"
+    },
+    {
+        "section_id":  "174",
+        "section_name":  "-",
+        "department_id":  "4"
+    },
+    {
+        "section_id":  "175",
+        "section_name":  "-",
+        "department_id":  "5"
+    },
+    {
+        "section_id":  "176",
+        "section_name":  "-",
+        "department_id":  "23"
+    },
+    {
+        "section_id":  "177",
+        "section_name":  "-",
+        "department_id":  "24"
+    },
+    {
+        "section_id":  "178",
+        "section_name":  "-",
+        "department_id":  "26"
+    },
+    {
+        "section_id":  "179",
+        "section_name":  "-",
+        "department_id":  "13"
+    },
+    {
+        "section_id":  "180",
+        "section_name":  "-",
+        "department_id":  "18"
+    },
+    {
+        "section_id":  "181",
+        "section_name":  "-",
+        "department_id":  "34"
+    },
+    {
+        "section_id":  "182",
+        "section_name":  "-",
+        "department_id":  "33"
+    },
+    {
+        "section_id":  "183",
+        "section_name":  "-",
+        "department_id":  "10"
+    },
+    {
+        "section_id":  "184",
+        "section_name":  "-",
+        "department_id":  "27"
+    },
+    {
+        "section_id":  "185",
+        "section_name":  "-",
+        "department_id":  "39"
+    },
+    {
+        "section_id":  "186",
+        "section_name":  "-",
+        "department_id":  "45"
+    },
+    {
+        "section_id":  "187",
+        "section_name":  "-",
+        "department_id":  "2"
+    },
+    {
+        "section_id":  "188",
+        "section_name":  "-",
+        "department_id":  "25"
+    },
+    {
+        "section_id":  "189",
+        "section_name":  "-",
+        "department_id":  "29"
+    },
+    {
+        "section_id":  "190",
+        "section_name":  "-",
+        "department_id":  "14"
+    },
+    {
+        "section_id":  "191",
+        "section_name":  "-",
+        "department_id":  "20"
+    },
+    {
+        "section_id":  "192",
+        "section_name":  "-",
+        "department_id":  "62"
+    },
+    {
+        "section_id":  "193",
+        "section_name":  "-",
+        "department_id":  "48"
+    }
+]

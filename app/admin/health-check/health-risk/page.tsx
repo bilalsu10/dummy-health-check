@@ -52,7 +52,13 @@ const VITALS_KEYS = ["BMI", "Blood Pressure", "Blood Glucose"];
 
 const VISION_HEARING_KEYS = ["Occupational Vision Exam", "VA", "Hearing Test"];
 
-const LAB_CHEMISTRY_KEYS = ["Liver Function", "Kidney Function", "Uric Acid", "PSA (Prostate Specific Antigen)"];
+const LAB_CHEMISTRY_KEYS = [
+  "Liver Function",
+  "Kidney Function",
+  "Uric Acid",
+  "Lipid Profile",
+  "PSA (Prostate Specific Antigen)",
+];
 
 const HEMATOLOGY_KEYS = ["CBC"];
 
@@ -84,6 +90,7 @@ const ITEM_LINKS: Record<string, string> = {
   "Liver Function": "/admin/health-check/health-risk/liver-function",
   "Kidney Function": "/admin/health-check/health-risk/kidney-function",
   "Uric Acid": "/admin/health-check/health-risk/uric-acid",
+  "Lipid Profile": "/admin/health-check/health-risk/lipid-profile",
   "PSA (Prostate Specific Antigen)": "/admin/health-check/health-risk/psa",
   "Amphetamine": "/admin/health-check/health-risk/amphetamine",
   "Blood Lead": "/admin/health-check/health-risk/blood-lead",
@@ -277,6 +284,7 @@ export default function RiskReport() {
               <option value={1}>TS</option>
               <option value={2}>TL</option>
               <option value={3}>KK</option>
+              <option value={4}>BS</option>
             </select>
             <select
               className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"

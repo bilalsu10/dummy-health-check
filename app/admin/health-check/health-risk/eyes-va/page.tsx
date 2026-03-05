@@ -80,7 +80,7 @@ export default function EyesVaReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [factoryId, setFactoryId] = useState<1 | 2 | 3>(1);
+  const [factoryId, setFactoryId] = useState<1 | 2 | 3 | 4>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [selectedYear] = useState("2568");
   const [resultYear, setResultYear] = useState("2568");
@@ -329,11 +329,12 @@ export default function EyesVaReport() {
               <select
                 className="h-11 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
                 value={factoryId}
-                onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2 | 3)}
+                onChange={(event) => setFactoryId(Number(event.target.value) as 1 | 2 | 3 | 4)}
               >
                 <option value={1}>TS</option>
                 <option value={2}>TL</option>
                 <option value={3}>KK</option>
+                <option value={4}>BS</option>
               </select>
             </label>
             <label className="flex flex-col gap-2 text-sm text-gray-600 md:flex-1">
