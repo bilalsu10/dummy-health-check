@@ -110,6 +110,38 @@ const ITEM_LINKS: Record<string, string> = {
   "Chest X-ray": "/admin/health-check/health-risk/chest-xray",
 };
 
+const ITEM_LABELS: Record<string, string> = {
+  "Hearing Test": "ตรวจการได้ยิน",
+  "Occupational Vision Exam": "ตรวจการมองเห็นจากงานอาชีวเวชกรรม",
+  VA: "ตรวจวัดสายตา (VA)",
+  BMI: "ดัชนีมวลกาย (BMI)",
+  "Blood Pressure": "ความดันโลหิต",
+  "Blood Glucose": "ระดับน้ำตาลในเลือด",
+  "Liver Function": "ตรวจการทำงานของตับ",
+  "Urine Arsenic": "ตรวจสารหนูในปัสสาวะ (Arsenic in Urine)",
+  "Stool Exam": "ตรวจอุจจาระ (Stool Examination)",
+  "Kidney Function": "ตรวจการทำงานของไต",
+  "Uric Acid": "ตรวจกรดยูริคในเลือด",
+  "Lipid Profile": "ไขมันในเลือด (Lipid Profile)",
+  "PSA (Prostate Specific Antigen)": "สารบ่งชี้มะเร็งต่อมลูกหมากในเลือด (PSA)",
+  "Amphetamine": "ตรวจสารเสพติดในปัสสาวะ",
+  "Blood Lead": "ตรวจสารตะกั่วในเลือด (Lead)",
+  Urinalysis: "ตรวจปัสสาวะ (Urinalysis)",
+  "Urine Acetone": "ตรวจสารอะซีโตนในปัสสาวะ (Acetone in Urine)",
+  "Urine Mercury": "ตรวจสารปรอทในปัสสาวะ (Mercury in Urine)",
+  "Urine Toluene": "ตรวจสารโทลูอีนในปัสสาวะ (Toluene)",
+  "Blood Cadmium": "ตรวจสารแคดเมียมในเลือด (Cadmium in Blood)",
+  "Urine Xylene": "ตรวจสารไซลีนในปัสสาวะ (Xylene)",
+  "Urine Methyl Ethyl Ketone": "ตรวจสารเมทิล เอทิล คีโตนในปัสสาวะ (Methyl Ethyl Ketone in Urine)",
+  "Urine Phenol": "ตรวจสารฟีนอลในปัสสาวะ (Phenol)",
+  CBC: "ตรวจความสมบูรณ์ของเม็ดเลือด (CBC)",
+  EKG: "ตรวจคลื่นไฟฟ้าหัวใจ (EKG)",
+  "Lung Function": "ตรวจสมรรถภาพปอด",
+  "Chest X-ray": "เอกซเรย์ทรวงอก (Chest X-ray)",
+};
+
+const getItemLabel = (item: string) => ITEM_LABELS[item] ?? item;
+
 
 const GROUPS = [
   { title: "Vitals", items: VITALS_KEYS },
@@ -386,11 +418,11 @@ export default function RiskReport() {
                             href={href}
                             className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-white"
                           >
-                            {item}
+                            {getItemLabel(item)}
                           </Link>
                         ) : (
                           <span className="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-700">
-                            {item}
+                            {getItemLabel(item)}
                           </span>
                         )}
                       </span>
