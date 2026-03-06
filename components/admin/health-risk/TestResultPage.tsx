@@ -51,6 +51,9 @@ const PIE_COLORS: Record<string, string> = {
   triglycerideHigh: "#EA580C",
   hdlLow: "#D97706",
   ldlHigh: "#B91C1C",
+  sgotAbnormal: "#DC2626",
+  sgptAbnormal: "#EA580C",
+  alkpAbnormal: "#B91C1C",
   notTested: "#6B7280",
   other: "#94A3B8",
 };
@@ -122,6 +125,22 @@ const parseLipidParts = (value: string) => {
   return { tc, tg, hdl, ldl, summary, abnormalities };
 };
 
+const parseLiverParts = (value: string) => {
+  const parts = value.split(",").map((part) => part.trim());
+  const toNum = (raw: string) => {
+    const cleaned = String(raw ?? "").replace("<", "").trim();
+    if (!cleaned) return null;
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
+  };
+  const sgot = toNum(parts[0] ?? "");
+  const sgpt = toNum(parts[1] ?? "");
+  const alkp = toNum(parts[2] ?? "");
+  const summary = parts.slice(3).join(",").trim();
+
+  return { sgot, sgpt, alkp, summary };
+};
+
 const compactAxisLabel = (value: unknown, max = 14) => {
   const text = String(value ?? "").trim();
   if (!text) return "";
@@ -164,6 +183,25 @@ const categorizeNormalAbnormal = (value: string, testKey: string) => {
     if (hdl !== null && hdl < 35) return "hdlLow";
     if (ldl !== null && ldl >= 150) return "ldlHigh";
     return "normal";
+  }
+  if (testKey === "Liver Function") {
+    const { sgot, sgpt, alkp, summary } = parseLiverParts(value);
+    const hasAnyNumeric = [sgot, sgpt, alkp].some((n) => n !== null);
+    if (hasAnyNumeric) {
+      if (sgot !== null && (sgot < 15 || sgot > 46)) return "sgotAbnormal";
+      if (sgpt !== null && sgpt >= 50) return "sgptAbnormal";
+      if (alkp !== null && (alkp < 38 || alkp > 126)) return "alkpAbnormal";
+      return "normal";
+    }
+
+    const summaryText = summary.replace(/\s+/g, "");
+    if (!summaryText) return "other";
+    if (summaryText.includes("SGOT")) return "sgotAbnormal";
+    if (summaryText.includes("SGPT")) return "sgptAbnormal";
+    if (summaryText.includes("ALKP")) return "alkpAbnormal";
+    if (summaryText.includes("ปกติ")) return "normal";
+    if (summaryText.includes("ผิดปกติ")) return "sgotAbnormal";
+    return "other";
   }
   const threshold = NUMERIC_THRESHOLDS[testKey];
   if (threshold !== undefined) {
@@ -259,6 +297,12 @@ const categoryLabel = (bucket: string) => {
       return "ไขมัน HDL ต่ำกว่าปกติ";
     case "ldlHigh":
       return "ไขมันตัวร้าย (LDL) สูง";
+    case "sgotAbnormal":
+      return "SGOT ผิดปกติ";
+    case "sgptAbnormal":
+      return "SGPT ผิดปกติ";
+    case "alkpAbnormal":
+      return "ALKP ผิดปกติ";
     case "notTested":
       return "ไม่ได้รับการตรวจ";
     default:
@@ -286,7 +330,23 @@ const categoryLabelFromValue = (value: string, bucket: string, testKey?: string)
   if (bucket === "triglycerideHigh") return "ไขมันไตรกลีเซอไรด์สูง";
   if (bucket === "hdlLow") return "ไขมัน HDL ต่ำกว่าปกติ";
   if (bucket === "ldlHigh") return "ไขมันตัวร้าย (LDL) สูง";
+  if (bucket === "sgotAbnormal") return "SGOT ผิดปกติ";
+  if (bucket === "sgptAbnormal") return "SGPT ผิดปกติ";
+  if (bucket === "alkpAbnormal") return "ALKP ผิดปกติ";
   return categoryLabel(bucket);
+};
+
+const legendLabelFormatter = (value: string, isLipid: boolean, isLiver: boolean) => {
+  if (isLipid) {
+    return value;
+  }
+  if (isLiver) {
+    if (value === "SGOT ผิดปกติ") return "SGOT";
+    if (value === "SGPT ผิดปกติ") return "SGPT";
+    if (value === "ALKP ผิดปกติ") return "ALKP";
+    if (value === "ไม่ได้รับการตรวจ") return "ไม่ตรวจ";
+  }
+  return value;
 };
 
 const trendValue = (value: string, testKey: string) => {
@@ -308,7 +368,10 @@ const trendValue = (value: string, testKey: string) => {
     bucket === "cholesterolHigh" ||
     bucket === "triglycerideHigh" ||
     bucket === "hdlLow" ||
-    bucket === "ldlHigh"
+    bucket === "ldlHigh" ||
+    bucket === "sgotAbnormal" ||
+    bucket === "sgptAbnormal" ||
+    bucket === "alkpAbnormal"
   ) {
     return 1;
   }
@@ -386,7 +449,10 @@ const TrendTooltip = ({ active, payload, testKey }: TrendTooltipProps) => {
     point.bucket === "cholesterolHigh" ||
     point.bucket === "triglycerideHigh" ||
     point.bucket === "hdlLow" ||
-    point.bucket === "ldlHigh"
+    point.bucket === "ldlHigh" ||
+    point.bucket === "sgotAbnormal" ||
+    point.bucket === "sgptAbnormal" ||
+    point.bucket === "alkpAbnormal"
       ? "text-red-700"
       : point.bucket === "normal"
         ? "text-emerald-700"
@@ -415,6 +481,7 @@ export default function TestResultPage({
   const isBloodPressure = testKey === "Blood Pressure";
   const isBMI = testKey === "BMI";
   const isLipid = testKey === "Lipid Profile";
+  const isLiver = testKey === "Liver Function";
   const showPieSliceLabel = !isLipid;
   const categorySeries = isBloodPressure
     ? [
@@ -441,6 +508,15 @@ export default function TestResultPage({
           { key: "triglycerideHigh", name: "ไตรกลีเซอไรด์สูง" },
           { key: "notTested", name: "ไม่ได้รับการตรวจ" },
         ]
+      : isLiver
+        ? [
+            { key: "normal", name: "ปกติ" },
+            { key: "sgotAbnormal", name: "SGOT ผิดปกติ" },
+            { key: "sgptAbnormal", name: "SGPT ผิดปกติ" },
+            { key: "alkpAbnormal", name: "ALKP ผิดปกติ" },
+            { key: "notTested", name: "ไม่ได้รับการตรวจ" },
+            { key: "other", name: "อื่นๆ" },
+          ]
       : [
         { key: "normal", name: "ปกติ" },
         { key: "abnormal", name: "ผิดปกติ" },
@@ -598,7 +674,10 @@ export default function TestResultPage({
   const hasBloodPressureNumeric = selectedResult
     ? /(\d{2,3})\s*\/\s*(\d{2,3})/.test(selectedResult.raw)
     : false;
-  const showResultCard = (testKey !== "Blood Pressure" || hasBloodPressureNumeric) && testKey !== "Lipid Profile";
+  const showResultCard =
+    (testKey !== "Blood Pressure" || hasBloodPressureNumeric) &&
+    testKey !== "Lipid Profile" &&
+    !isLiver;
 
   const trend = useMemo(() => {
     if (!selectedEmpId) return [];
@@ -647,6 +726,36 @@ export default function TestResultPage({
       buildMetric("ldl", "LDL", (v) => v >= 150),
     ];
   }, [isLipid, selectedEmpId, individualYears, rowsByYear, testKey, fallbackKeys]);
+
+  const liverTrend = useMemo(() => {
+    if (!isLiver || !selectedEmpId) return null;
+    const sexRaw = normalizeValue(selectedPerson?.Sex).toLowerCase();
+    const isFemale = sexRaw.includes("หญิง") || sexRaw === "f" || sexRaw.includes("female");
+    const sgptUpper = isFemale ? 35 : 50;
+    const buildMetric = (
+      key: "sgot" | "sgpt" | "alkp",
+      label: string,
+      isAbnormal: (value: number) => boolean,
+    ) => {
+      const data = individualYears.map((year) => {
+        const row =
+          rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
+          null;
+        const raw = getTestRawValue(row ?? null, testKey, fallbackKeys);
+        const liver = parseLiverParts(raw);
+        const value = liver[key];
+        const abnormal = value !== null ? isAbnormal(value) : null;
+        return { year, value, abnormal };
+      });
+      return { key, label, data };
+    };
+
+    return [
+      buildMetric("sgot", "SGOT", (v) => v < 15 || v > 46),
+      buildMetric("sgpt", "SGPT", (v) => v >= sgptUpper),
+      buildMetric("alkp", "ALKP", (v) => v < 38 || v > 126),
+    ];
+  }, [isLiver, selectedEmpId, selectedPerson?.Sex, individualYears, rowsByYear, testKey, fallbackKeys]);
 
   const overviewRowsYear = useMemo(() => rowsByYear[overviewYear] ?? [], [rowsByYear, overviewYear]);
 
@@ -902,7 +1011,7 @@ export default function TestResultPage({
                       <div className="mt-2 text-2xl font-semibold text-slate-900">{resultDisplay}</div>
                     </div>
                   ) : null}
-                  {!isLipid ? (
+                  {!isLipid && !isLiver ? (
                     <div
                       className={
                         selectedResult?.bucket === "normal"
@@ -971,6 +1080,61 @@ export default function TestResultPage({
                     })()}
                   </div>
                 ) : null}
+                {isLiver && selectedResult ? (
+                  <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="mb-2 text-sm font-semibold text-gray-800">รายละเอียดค่าตับ</div>
+                    {(() => {
+                      const liver = parseLiverParts(selectedResult.raw);
+                      const sexRaw = normalizeValue(selectedPerson?.Sex).toLowerCase();
+                      const isFemale =
+                        sexRaw.includes("หญิง") ||
+                        sexRaw === "f" ||
+                        sexRaw.includes("female");
+                      const sgptUpper = isFemale ? 35 : 50;
+                      const items = [
+                        {
+                          label: "SGOT",
+                          value: liver.sgot,
+                          abnormal: liver.sgot !== null && (liver.sgot < 15 || liver.sgot > 46),
+                        },
+                        {
+                          label: "SGPT",
+                          value: liver.sgpt,
+                          abnormal: liver.sgpt !== null && liver.sgpt >= sgptUpper,
+                        },
+                        {
+                          label: "ALKP",
+                          value: liver.alkp,
+                          abnormal: liver.alkp !== null && (liver.alkp < 38 || liver.alkp > 126),
+                        },
+                      ];
+                      return (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
+                                <th className="py-2">รายการ</th>
+                                <th className="py-2">ค่า</th>
+                                <th className="py-2">สถานะ</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {items.map((item) => (
+                                <tr key={item.label} className="border-b border-gray-100">
+                                  <td className="py-2">{item.label}</td>
+                                  <td className="py-2">{item.value ?? "-"}</td>
+                                  <td className={`py-2 font-semibold ${item.abnormal ? "text-red-700" : "text-emerald-700"}`}>
+                                    {item.value === null ? "-" : item.abnormal ? "ผิดปกติ" : "ปกติ"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : null}
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -988,6 +1152,58 @@ export default function TestResultPage({
                                 padding={{ left: 36, right: 36 }}
                                 tickMargin={6}
                               />
+                              <YAxis allowDecimals />
+                              <Tooltip />
+                              <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#2563EB"
+                                strokeWidth={2}
+                                connectNulls={false}
+                                dot={({ cx, cy, payload }) => {
+                                  if (typeof cx !== "number" || typeof cy !== "number") return null;
+                                  const isBad = Boolean(payload?.abnormal);
+                                  return (
+                                    <circle
+                                      cx={cx}
+                                      cy={cy}
+                                      r={6}
+                                      fill={isBad ? STRONG_RED_DOT : "#16A34A"}
+                                      stroke="#FFFFFF"
+                                      strokeWidth={2}
+                                    />
+                                  );
+                                }}
+                                activeDot={({ cx, cy, payload }) => {
+                                  if (typeof cx !== "number" || typeof cy !== "number") return null;
+                                  const isBad = Boolean(payload?.abnormal);
+                                  return (
+                                    <circle
+                                      cx={cx}
+                                      cy={cy}
+                                      r={7}
+                                      fill={isBad ? STRONG_RED_DOT : "#16A34A"}
+                                      stroke="#FFFFFF"
+                                      strokeWidth={2}
+                                    />
+                                  );
+                                }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : isLiver && liverTrend ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {liverTrend.map((metric) => (
+                      <div key={metric.key} className="rounded-lg border border-gray-200 p-3">
+                        <div className="mb-2 text-xs font-semibold text-gray-700">{metric.label}</div>
+                        <div className="h-36">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={metric.data}>
+                              <XAxis dataKey="year" padding={{ left: 24, right: 24 }} tickMargin={6} />
                               <YAxis allowDecimals />
                               <Tooltip />
                               <Line
@@ -1188,10 +1404,10 @@ export default function TestResultPage({
               <div className={isLipid ? "mb-3 text-base font-semibold text-gray-800" : "mb-4 text-lg font-semibold text-gray-800"}>
                 สรุปผลตรวจ {title} ปี {overviewYear}
               </div>
-                <div className={isLipid ? "mx-auto grid max-w-4xl gap-1.5 sm:grid-cols-2 lg:grid-cols-4" : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
-                  <div className={isLipid ? "rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-center" : "rounded-xl border border-emerald-200 bg-emerald-50 p-4"}>
+                <div className={isLipid ? "mx-auto grid max-w-4xl gap-1.5 sm:grid-cols-2 lg:grid-cols-4" : isLiver ? "mx-auto grid max-w-3xl gap-2 sm:grid-cols-2 md:grid-cols-3" : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
+                  <div className={isLipid || isLiver ? "rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-center" : "rounded-xl border border-emerald-200 bg-emerald-50 p-4"}>
                     <div className="text-xs text-emerald-700">ปกติ</div>
-                    <div className={isLipid ? "mt-0.5 text-lg font-semibold text-emerald-900" : "mt-2 text-2xl font-semibold text-emerald-900"}>
+                    <div className={isLipid || isLiver ? "mt-0.5 text-lg font-semibold text-emerald-900" : "mt-2 text-2xl font-semibold text-emerald-900"}>
                       {summaryOverview.normal ?? 0}
                     </div>
                   </div>
@@ -1237,6 +1453,27 @@ export default function TestResultPage({
                         </div>
                       </div>
                     </>
+                  ) : isLiver ? (
+                    <>
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-2 text-center">
+                        <div className="text-xs text-red-700 text-center">SGOT ผิดปกติ</div>
+                        <div className="mt-0.5 text-lg font-semibold text-red-900">
+                          {summaryOverview.sgotAbnormal ?? 0}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-orange-200 bg-orange-50 p-2 text-center">
+                        <div className="text-xs text-orange-700 text-center">SGPT ผิดปกติ</div>
+                        <div className="mt-0.5 text-lg font-semibold text-orange-900">
+                          {summaryOverview.sgptAbnormal ?? 0}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-rose-200 bg-rose-50 p-2 text-center">
+                        <div className="text-xs text-rose-700 text-center">ALKP ผิดปกติ</div>
+                        <div className="mt-0.5 text-lg font-semibold text-rose-900">
+                          {summaryOverview.alkpAbnormal ?? 0}
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                       <div className="text-xs text-red-700">ผิดปกติ</div>
@@ -1245,13 +1482,13 @@ export default function TestResultPage({
                       </div>
                     </div>
                   )}
-                <div className={isLipid ? "rounded-xl border border-gray-200 bg-gray-50 p-2 text-center" : "rounded-xl border border-gray-200 bg-gray-50 p-4"}>
+                <div className={isLipid || isLiver ? "rounded-xl border border-gray-200 bg-gray-50 p-2 text-center" : "rounded-xl border border-gray-200 bg-gray-50 p-4"}>
                   <div className="text-xs text-gray-600">ไม่ได้รับการตรวจ</div>
                   <div className={isLipid ? "mt-0.5 text-lg font-semibold text-gray-900" : "mt-2 text-2xl font-semibold text-gray-900"}>
                     {summaryOverview.notTested ?? 0}
                   </div>
                 </div>
-                <div className={isLipid ? "rounded-xl border border-slate-200 bg-slate-50 p-2 text-center" : "rounded-xl border border-slate-200 bg-slate-50 p-4"}>
+                <div className={isLipid || isLiver ? "rounded-xl border border-slate-200 bg-slate-50 p-2 text-center" : "rounded-xl border border-slate-200 bg-slate-50 p-4"}>
                   <div className="text-xs text-slate-600">อื่นๆ</div>
                   <div className={isLipid ? "mt-0.5 text-lg font-semibold text-slate-900" : "mt-2 text-2xl font-semibold text-slate-900"}>
                     {summaryOverview.other ?? 0}
@@ -1277,8 +1514,9 @@ export default function TestResultPage({
                           </Pie>
                           <Tooltip />
                           <Legend
-                            iconSize={isLipid ? 10 : 14}
-                            wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                            iconSize={isLipid || isLiver ? 10 : 14}
+                            wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                            formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -1297,15 +1535,16 @@ export default function TestResultPage({
                           dataKey="name"
                           interval="preserveStartEnd"
                           minTickGap={isLipid ? 18 : 8}
-                          tick={{ fontSize: isLipid ? 10 : 12 }}
-                          height={isLipid ? 44 : undefined}
-                          tickFormatter={isLipid ? (value) => compactAxisLabel(value, 12) : undefined}
+                          tick={{ fontSize: isLipid || isLiver ? 10 : 12 }}
+                          height={isLipid || isLiver ? 44 : undefined}
+                          tickFormatter={isLipid || isLiver ? (value) => compactAxisLabel(value, 12) : undefined}
                         />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend
-                          iconSize={isLipid ? 10 : 14}
-                          wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          iconSize={isLipid || isLiver ? 10 : 14}
+                          wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
                         />
                         {categorySeries.map((item) => (
                           <Bar
@@ -1343,8 +1582,9 @@ export default function TestResultPage({
                           </Pie>
                           <Tooltip />
                           <Legend
-                            iconSize={isLipid ? 10 : 14}
-                            wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                            iconSize={isLipid || isLiver ? 10 : 14}
+                            wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                            formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -1363,15 +1603,16 @@ export default function TestResultPage({
                           dataKey="name"
                           interval="preserveStartEnd"
                           minTickGap={isLipid ? 18 : 8}
-                          tick={{ fontSize: isLipid ? 10 : 12 }}
-                          height={isLipid ? 44 : undefined}
-                          tickFormatter={isLipid ? (value) => compactAxisLabel(value, 12) : undefined}
+                          tick={{ fontSize: isLipid || isLiver ? 10 : 12 }}
+                          height={isLipid || isLiver ? 44 : undefined}
+                          tickFormatter={isLipid || isLiver ? (value) => compactAxisLabel(value, 12) : undefined}
                         />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend
-                          iconSize={isLipid ? 10 : 14}
-                          wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          iconSize={isLipid || isLiver ? 10 : 14}
+                          wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
                         />
                         {categorySeries.map((item) => (
                           <Bar
@@ -1409,8 +1650,9 @@ export default function TestResultPage({
                           </Pie>
                           <Tooltip />
                           <Legend
-                            iconSize={isLipid ? 10 : 14}
-                            wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                            iconSize={isLipid || isLiver ? 10 : 14}
+                            wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                            formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -1429,15 +1671,16 @@ export default function TestResultPage({
                           dataKey="name"
                           interval="preserveStartEnd"
                           minTickGap={isLipid ? 18 : 8}
-                          tick={{ fontSize: isLipid ? 10 : 12 }}
-                          height={isLipid ? 44 : undefined}
-                          tickFormatter={isLipid ? (value) => compactAxisLabel(value, 12) : undefined}
+                          tick={{ fontSize: isLipid || isLiver ? 10 : 12 }}
+                          height={isLipid || isLiver ? 44 : undefined}
+                          tickFormatter={isLipid || isLiver ? (value) => compactAxisLabel(value, 12) : undefined}
                         />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend
-                          iconSize={isLipid ? 10 : 14}
-                          wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          iconSize={isLipid || isLiver ? 10 : 14}
+                          wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
                         />
                         {categorySeries.map((item) => (
                           <Bar
