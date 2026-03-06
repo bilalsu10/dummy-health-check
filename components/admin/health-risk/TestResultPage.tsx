@@ -54,6 +54,7 @@ const PIE_COLORS: Record<string, string> = {
   notTested: "#6B7280",
   other: "#94A3B8",
 };
+const STRONG_RED_DOT = "#FF0000";
 
 const getTestRawValue = (
   row: HealthRow | null,
@@ -93,7 +94,9 @@ const parseNumeric = (value: string) => {
 const parseLipidParts = (value: string) => {
   const parts = value.split(",").map((part) => part.trim());
   const toNum = (raw: string) => {
-    const n = Number(String(raw ?? "").replace("<", "").trim());
+    const cleaned = String(raw ?? "").replace("<", "").trim();
+    if (!cleaned) return null;
+    const n = Number(cleaned);
     return Number.isFinite(n) ? n : null;
   };
   const tc = toNum(parts[0] ?? "");
@@ -117,6 +120,12 @@ const parseLipidParts = (value: string) => {
   }
 
   return { tc, tg, hdl, ldl, summary, abnormalities };
+};
+
+const compactAxisLabel = (value: unknown, max = 14) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  return text.length > max ? `${text.slice(0, max)}...` : text;
 };
 
 const categorizeNormalAbnormal = (value: string, testKey: string) => {
@@ -406,6 +415,7 @@ export default function TestResultPage({
   const isBloodPressure = testKey === "Blood Pressure";
   const isBMI = testKey === "BMI";
   const isLipid = testKey === "Lipid Profile";
+  const showPieSliceLabel = !isLipid;
   const categorySeries = isBloodPressure
     ? [
         { key: "normal", name: "ปกติ" },
@@ -425,12 +435,11 @@ export default function TestResultPage({
     : isLipid
       ? [
           { key: "normal", name: "ปกติ" },
-          { key: "cholesterolHigh", name: "ไขมันคลอเลสเตอรอลสูง" },
-          { key: "triglycerideHigh", name: "ไขมันไตรกลีเซอไรด์สูง" },
-          { key: "hdlLow", name: "ไขมัน HDL ต่ำกว่าปกติ" },
-          { key: "ldlHigh", name: "ไขมันตัวร้าย (LDL) สูง" },
+          { key: "cholesterolHigh", name: "คลอเลสเตอรอลสูง" },
+          { key: "ldlHigh", name: "LDL สูง" },
+          { key: "hdlLow", name: "HDLต่ำ" },
+          { key: "triglycerideHigh", name: "ไตรกลีเซอไรด์สูง" },
           { key: "notTested", name: "ไม่ได้รับการตรวจ" },
-          { key: "other", name: "อื่นๆ" },
         ]
       : [
         { key: "normal", name: "ปกติ" },
@@ -610,6 +619,34 @@ export default function TestResultPage({
       };
     });
   }, [rowsByYear, selectedEmpId, testKey, fallbackKeys, individualYears]);
+
+  const lipidTrend = useMemo(() => {
+    if (!isLipid || !selectedEmpId) return null;
+    const buildMetric = (
+      key: "tc" | "tg" | "hdl" | "ldl",
+      label: string,
+      isAbnormal: (value: number) => boolean,
+    ) => {
+      const data = individualYears.map((year) => {
+        const row =
+          rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
+          null;
+        const raw = getTestRawValue(row ?? null, testKey, fallbackKeys);
+        const lipid = parseLipidParts(raw);
+        const value = lipid[key];
+        const abnormal = value !== null ? isAbnormal(value) : null;
+        return { year, value, abnormal };
+      });
+      return { key, label, data };
+    };
+
+    return [
+      buildMetric("tc", "Total Cholesterol", (v) => v >= 200),
+      buildMetric("tg", "Triglyceride", (v) => v >= 150),
+      buildMetric("hdl", "HDL", (v) => v < 35),
+      buildMetric("ldl", "LDL", (v) => v >= 150),
+    ];
+  }, [isLipid, selectedEmpId, individualYears, rowsByYear, testKey, fallbackKeys]);
 
   const overviewRowsYear = useMemo(() => rowsByYear[overviewYear] ?? [], [rowsByYear, overviewYear]);
 
@@ -865,38 +902,40 @@ export default function TestResultPage({
                       <div className="mt-2 text-2xl font-semibold text-slate-900">{resultDisplay}</div>
                     </div>
                   ) : null}
-                  <div
-                    className={
-                      selectedResult?.bucket === "normal"
-                        ? "rounded-xl border border-emerald-200 bg-emerald-50 p-4"
-                        : selectedResult?.bucket === "abnormal" || selectedResult?.bucket === "high"
-                          ? "rounded-xl border border-red-200 bg-red-50 p-4"
-                          : selectedResult?.bucket === "low"
-                            ? "rounded-xl border border-yellow-200 bg-yellow-50 p-4"
-                          : "rounded-xl border border-gray-200 bg-gray-50 p-4"
-                    }
-                  >
-                    <div className="text-xs text-slate-600">ผลตรวจ</div>
+                  {!isLipid ? (
                     <div
                       className={
                         selectedResult?.bucket === "normal"
-                          ? "mt-2 text-2xl font-semibold text-emerald-700"
+                          ? "rounded-xl border border-emerald-200 bg-emerald-50 p-4"
                           : selectedResult?.bucket === "abnormal" || selectedResult?.bucket === "high"
-                            ? "mt-2 text-2xl font-semibold text-red-700"
+                            ? "rounded-xl border border-red-200 bg-red-50 p-4"
                             : selectedResult?.bucket === "low"
-                              ? "mt-2 text-2xl font-semibold text-yellow-700"
-                            : "mt-2 text-2xl font-semibold text-gray-700"
+                              ? "rounded-xl border border-yellow-200 bg-yellow-50 p-4"
+                            : "rounded-xl border border-gray-200 bg-gray-50 p-4"
                       }
                     >
-                      {selectedResult
-                        ? categoryLabelFromValue(selectedResult.raw, selectedResult.bucket, testKey)
-                        : categoryLabel("other")}
+                      <div className="text-xs text-slate-600">ผลตรวจ</div>
+                      <div
+                        className={
+                          selectedResult?.bucket === "normal"
+                            ? "mt-2 text-2xl font-semibold text-emerald-700"
+                            : selectedResult?.bucket === "abnormal" || selectedResult?.bucket === "high"
+                              ? "mt-2 text-2xl font-semibold text-red-700"
+                              : selectedResult?.bucket === "low"
+                                ? "mt-2 text-2xl font-semibold text-yellow-700"
+                              : "mt-2 text-2xl font-semibold text-gray-700"
+                        }
+                      >
+                        {selectedResult
+                          ? categoryLabelFromValue(selectedResult.raw, selectedResult.bucket, testKey)
+                          : categoryLabel("other")}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
                 {isLipid && selectedResult ? (
                   <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4">
-                    <div className="mb-2 text-sm font-semibold text-gray-800">รายละเอียดค่าไขมัน (Array)</div>
+                    <div className="mb-2 text-sm font-semibold text-gray-800">รายละเอียดค่าไขมัน</div>
                     {(() => {
                       const lipid = parseLipidParts(selectedResult.raw);
                       const items = [
@@ -925,12 +964,6 @@ export default function TestResultPage({
                                   </td>
                                 </tr>
                               ))}
-                              <tr>
-                                <td className="py-2">สรุป</td>
-                                <td className="py-2" colSpan={2}>
-                                  {categoryLabelFromValue(selectedResult.raw, selectedResult.bucket, testKey)}
-                                </td>
-                              </tr>
                             </tbody>
                           </table>
                         </div>
@@ -942,81 +975,139 @@ export default function TestResultPage({
 
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="text-lg font-semibold text-gray-800">แนวโน้มรายปี</div>
-                <div className="mt-4 h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trend}>
-                      <XAxis dataKey="year" />
-                      {isNumericTrend ? (
-                        <YAxis allowDecimals />
-                      ) : (
-                        <YAxis
-                          domain={isBloodPressure ? [0.1, 1.1] : [0.4, 1.1]}
-                          ticks={isBloodPressure ? [0.2, 0.6, 1] : [0.6, 1]}
-                          tickFormatter={(value) => {
-                            if (isBloodPressure) return value >= 1 ? "สูง" : value >= 0.6 ? "ปกติ" : "ต่ำ";
-                            return value >= 1 ? "ผิดปกติ" : "ปกติ";
+                {isLipid && lipidTrend ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {lipidTrend.map((metric) => (
+                      <div key={metric.key} className="rounded-lg border border-gray-200 p-3">
+                        <div className="mb-2 text-xs font-semibold text-gray-700">{metric.label}</div>
+                        <div className="h-36">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={metric.data}>
+                              <XAxis
+                                dataKey="year"
+                                padding={{ left: 36, right: 36 }}
+                                tickMargin={6}
+                              />
+                              <YAxis allowDecimals />
+                              <Tooltip />
+                              <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#2563EB"
+                                strokeWidth={2}
+                                connectNulls={false}
+                                dot={({ cx, cy, payload }) => {
+                                  if (typeof cx !== "number" || typeof cy !== "number") return null;
+                                  const isBad = Boolean(payload?.abnormal);
+                                  return (
+                                    <circle
+                                      cx={cx}
+                                      cy={cy}
+                                      r={6}
+                                      fill={isBad ? STRONG_RED_DOT : "#16A34A"}
+                                      stroke="#FFFFFF"
+                                      strokeWidth={2}
+                                    />
+                                  );
+                                }}
+                                activeDot={({ cx, cy, payload }) => {
+                                  if (typeof cx !== "number" || typeof cy !== "number") return null;
+                                  const isBad = Boolean(payload?.abnormal);
+                                  return (
+                                    <circle
+                                      cx={cx}
+                                      cy={cy}
+                                      r={7}
+                                      fill={isBad ? STRONG_RED_DOT : "#16A34A"}
+                                      stroke="#FFFFFF"
+                                      strokeWidth={2}
+                                    />
+                                  );
+                                }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trend}>
+                        <XAxis dataKey="year" />
+                        {isNumericTrend ? (
+                          <YAxis allowDecimals />
+                        ) : (
+                          <YAxis
+                            domain={isBloodPressure ? [0.1, 1.1] : [0.4, 1.1]}
+                            ticks={isBloodPressure ? [0.2, 0.6, 1] : [0.6, 1]}
+                            tickFormatter={(value) => {
+                              if (isBloodPressure) return value >= 1 ? "สูง" : value >= 0.6 ? "ปกติ" : "ต่ำ";
+                              return value >= 1 ? "ผิดปกติ" : "ปกติ";
+                            }}
+                          />
+                        )}
+                        <Tooltip content={<TrendTooltip testKey={testKey} />} />
+                        <Line
+                          type="monotone"
+                          dataKey="value"
+                          stroke="#2563EB"
+                          strokeWidth={2}
+                          connectNulls={false}
+                          dot={({ cx, cy, payload }) => {
+                            if (typeof cx !== "number" || typeof cy !== "number") return null;
+                            const bucket = String(payload?.bucket ?? "");
+                            const fill =
+                              bucket === "abnormal" ||
+                              bucket === "high" ||
+                              bucket === "low" ||
+                              bucket === "cholesterolHigh" ||
+                              bucket === "triglycerideHigh" ||
+                              bucket === "hdlLow" ||
+                              bucket === "ldlHigh"
+                                ? STRONG_RED_DOT
+                                : "#2563EB";
+                            return (
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={4}
+                                fill={fill}
+                                stroke="#1F2937"
+                                strokeWidth={0.5}
+                              />
+                            );
+                          }}
+                          activeDot={({ cx, cy, payload }) => {
+                            if (typeof cx !== "number" || typeof cy !== "number") return null;
+                            const bucket = String(payload?.bucket ?? "");
+                            const fill =
+                              bucket === "abnormal" ||
+                              bucket === "high" ||
+                              bucket === "low" ||
+                              bucket === "cholesterolHigh" ||
+                              bucket === "triglycerideHigh" ||
+                              bucket === "hdlLow" ||
+                              bucket === "ldlHigh"
+                                ? STRONG_RED_DOT
+                                : "#2563EB";
+                            return (
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={5}
+                                fill={fill}
+                                stroke="#111827"
+                                strokeWidth={1}
+                              />
+                            );
                           }}
                         />
-                      )}
-                      <Tooltip content={<TrendTooltip testKey={testKey} />} />
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke="#2563EB"
-                        strokeWidth={2}
-                        connectNulls={false}
-                        dot={({ cx, cy, payload }) => {
-                          if (typeof cx !== "number" || typeof cy !== "number") return null;
-                          const bucket = String(payload?.bucket ?? "");
-                          const fill =
-                            bucket === "abnormal" ||
-                            bucket === "high" ||
-                            bucket === "low" ||
-                            bucket === "cholesterolHigh" ||
-                            bucket === "triglycerideHigh" ||
-                            bucket === "hdlLow" ||
-                            bucket === "ldlHigh"
-                              ? "#DC2626"
-                              : "#2563EB";
-                          return (
-                            <circle
-                              cx={cx}
-                              cy={cy}
-                              r={4}
-                              fill={fill}
-                              stroke="#1F2937"
-                              strokeWidth={0.5}
-                            />
-                          );
-                        }}
-                        activeDot={({ cx, cy, payload }) => {
-                          if (typeof cx !== "number" || typeof cy !== "number") return null;
-                          const bucket = String(payload?.bucket ?? "");
-                          const fill =
-                            bucket === "abnormal" ||
-                            bucket === "high" ||
-                            bucket === "low" ||
-                            bucket === "cholesterolHigh" ||
-                            bucket === "triglycerideHigh" ||
-                            bucket === "hdlLow" ||
-                            bucket === "ldlHigh"
-                              ? "#DC2626"
-                              : "#2563EB";
-                          return (
-                            <circle
-                              cx={cx}
-                              cy={cy}
-                              r={5}
-                              fill={fill}
-                              stroke="#111827"
-                              strokeWidth={1}
-                            />
-                          );
-                        }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -1093,14 +1184,14 @@ export default function TestResultPage({
             </label>
           </div>
           <div className="grid gap-4">
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <div className="mb-4 text-lg font-semibold text-gray-800">
+            <div className={isLipid ? "rounded-xl border border-gray-200 bg-white p-3" : "rounded-xl border border-gray-200 bg-white p-4"}>
+              <div className={isLipid ? "mb-3 text-base font-semibold text-gray-800" : "mb-4 text-lg font-semibold text-gray-800"}>
                 สรุปผลตรวจ {title} ปี {overviewYear}
               </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className={isLipid ? "mx-auto grid max-w-4xl gap-1.5 sm:grid-cols-2 lg:grid-cols-4" : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
+                  <div className={isLipid ? "rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-center" : "rounded-xl border border-emerald-200 bg-emerald-50 p-4"}>
                     <div className="text-xs text-emerald-700">ปกติ</div>
-                    <div className="mt-2 text-2xl font-semibold text-emerald-900">
+                    <div className={isLipid ? "mt-0.5 text-lg font-semibold text-emerald-900" : "mt-2 text-2xl font-semibold text-emerald-900"}>
                       {summaryOverview.normal ?? 0}
                     </div>
                   </div>
@@ -1121,27 +1212,27 @@ export default function TestResultPage({
                     </>
                   ) : isLipid ? (
                     <>
-                      <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-2 text-center">
                         <div className="text-xs text-red-700">ไขมันคลอเลสเตอรอลสูง</div>
-                        <div className="mt-2 text-2xl font-semibold text-red-900">
+                        <div className="mt-0.5 text-lg font-semibold text-red-900">
                           {summaryOverview.cholesterolHigh ?? 0}
                         </div>
                       </div>
-                      <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                      <div className="rounded-xl border border-orange-200 bg-orange-50 p-2 text-center">
                         <div className="text-xs text-orange-700">ไขมันไตรกลีเซอไรด์สูง</div>
-                        <div className="mt-2 text-2xl font-semibold text-orange-900">
+                        <div className="mt-0.5 text-lg font-semibold text-orange-900">
                           {summaryOverview.triglycerideHigh ?? 0}
                         </div>
                       </div>
-                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-center">
                         <div className="text-xs text-amber-700">ไขมัน HDL ต่ำกว่าปกติ</div>
-                        <div className="mt-2 text-2xl font-semibold text-amber-900">
+                        <div className="mt-0.5 text-lg font-semibold text-amber-900">
                           {summaryOverview.hdlLow ?? 0}
                         </div>
                       </div>
-                      <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                      <div className="rounded-xl border border-rose-200 bg-rose-50 p-2 text-center">
                         <div className="text-xs text-rose-700">ไขมันตัวร้าย (LDL) สูง</div>
-                        <div className="mt-2 text-2xl font-semibold text-rose-900">
+                        <div className="mt-0.5 text-lg font-semibold text-rose-900">
                           {summaryOverview.ldlHigh ?? 0}
                         </div>
                       </div>
@@ -1154,15 +1245,15 @@ export default function TestResultPage({
                       </div>
                     </div>
                   )}
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className={isLipid ? "rounded-xl border border-gray-200 bg-gray-50 p-2 text-center" : "rounded-xl border border-gray-200 bg-gray-50 p-4"}>
                   <div className="text-xs text-gray-600">ไม่ได้รับการตรวจ</div>
-                  <div className="mt-2 text-2xl font-semibold text-gray-900">
+                  <div className={isLipid ? "mt-0.5 text-lg font-semibold text-gray-900" : "mt-2 text-2xl font-semibold text-gray-900"}>
                     {summaryOverview.notTested ?? 0}
                   </div>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className={isLipid ? "rounded-xl border border-slate-200 bg-slate-50 p-2 text-center" : "rounded-xl border border-slate-200 bg-slate-50 p-4"}>
                   <div className="text-xs text-slate-600">อื่นๆ</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-900">
+                  <div className={isLipid ? "mt-0.5 text-lg font-semibold text-slate-900" : "mt-2 text-2xl font-semibold text-slate-900"}>
                     {summaryOverview.other ?? 0}
                   </div>
                 </div>
@@ -1171,7 +1262,7 @@ export default function TestResultPage({
 
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <div className="mb-3 text-lg font-semibold text-gray-800">
+                <div className="mb-3 min-h-[56px] text-lg font-semibold leading-tight text-gray-800">
                   สัดส่วน {title} ตาม Factory
                 </div>
                 <div className="h-72">
@@ -1179,13 +1270,16 @@ export default function TestResultPage({
                     overviewFactoryPieData.length ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={overviewFactoryPieData} dataKey="value" nameKey="name" outerRadius={95} label>
+                          <Pie data={overviewFactoryPieData} dataKey="value" nameKey="name" outerRadius={95} label={showPieSliceLabel}>
                             {overviewFactoryPieData.map((entry) => (
                               <Cell key={entry.key} fill={PIE_COLORS[entry.key] ?? "#94A3B8"} />
                             ))}
                           </Pie>
                           <Tooltip />
-                          <Legend />
+                          <Legend
+                            iconSize={isLipid ? 10 : 14}
+                            wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
@@ -1195,11 +1289,24 @@ export default function TestResultPage({
                     )
                   ) : factoryChart.length ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={factoryChart}>
-                        <XAxis dataKey="name" />
+                      <BarChart
+                        data={factoryChart}
+                        margin={isLipid ? { top: 8, right: 8, left: 0, bottom: 32 } : undefined}
+                      >
+                        <XAxis
+                          dataKey="name"
+                          interval="preserveStartEnd"
+                          minTickGap={isLipid ? 18 : 8}
+                          tick={{ fontSize: isLipid ? 10 : 12 }}
+                          height={isLipid ? 44 : undefined}
+                          tickFormatter={isLipid ? (value) => compactAxisLabel(value, 12) : undefined}
+                        />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
-                        <Legend />
+                        <Legend
+                          iconSize={isLipid ? 10 : 14}
+                          wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                        />
                         {categorySeries.map((item) => (
                           <Bar
                             key={item.key}
@@ -1219,7 +1326,7 @@ export default function TestResultPage({
                 </div>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <div className="mb-3 text-lg font-semibold text-gray-800">
+                <div className="mb-3 min-h-[56px] text-lg font-semibold leading-tight text-gray-800">
                   {overviewDepartment
                     ? overviewDepartment
                     : `สัดส่วน ${title} ตาม Department`}
@@ -1229,13 +1336,16 @@ export default function TestResultPage({
                     overviewDepartmentPieData.length ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={overviewDepartmentPieData} dataKey="value" nameKey="name" outerRadius={95} label>
+                          <Pie data={overviewDepartmentPieData} dataKey="value" nameKey="name" outerRadius={95} label={showPieSliceLabel}>
                             {overviewDepartmentPieData.map((entry) => (
                               <Cell key={entry.key} fill={PIE_COLORS[entry.key] ?? "#94A3B8"} />
                             ))}
                           </Pie>
                           <Tooltip />
-                          <Legend />
+                          <Legend
+                            iconSize={isLipid ? 10 : 14}
+                            wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
@@ -1245,11 +1355,24 @@ export default function TestResultPage({
                     )
                   ) : departmentChart.length ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={departmentChart}>
-                        <XAxis dataKey="name" />
+                      <BarChart
+                        data={departmentChart}
+                        margin={isLipid ? { top: 8, right: 8, left: 0, bottom: 32 } : undefined}
+                      >
+                        <XAxis
+                          dataKey="name"
+                          interval="preserveStartEnd"
+                          minTickGap={isLipid ? 18 : 8}
+                          tick={{ fontSize: isLipid ? 10 : 12 }}
+                          height={isLipid ? 44 : undefined}
+                          tickFormatter={isLipid ? (value) => compactAxisLabel(value, 12) : undefined}
+                        />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
-                        <Legend />
+                        <Legend
+                          iconSize={isLipid ? 10 : 14}
+                          wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                        />
                         {categorySeries.map((item) => (
                           <Bar
                             key={item.key}
@@ -1269,7 +1392,7 @@ export default function TestResultPage({
                 </div>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <div className="mb-3 text-lg font-semibold text-gray-800">
+                <div className="mb-3 min-h-[56px] text-lg font-semibold leading-tight text-gray-800">
                   {shouldShowSectionPie && singleSectionName
                       ? singleSectionName
                     : `สัดส่วน ${title} ตาม Section`}
@@ -1279,13 +1402,16 @@ export default function TestResultPage({
                     overviewPieData.length ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={overviewPieData} dataKey="value" nameKey="name" outerRadius={95} label>
+                          <Pie data={overviewPieData} dataKey="value" nameKey="name" outerRadius={95} label={showPieSliceLabel}>
                             {overviewPieData.map((entry) => (
                               <Cell key={entry.key} fill={PIE_COLORS[entry.key] ?? "#94A3B8"} />
                             ))}
                           </Pie>
                           <Tooltip />
-                          <Legend />
+                          <Legend
+                            iconSize={isLipid ? 10 : 14}
+                            wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
@@ -1295,11 +1421,24 @@ export default function TestResultPage({
                     )
                   ) : sectionChart.length ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={sectionChart}>
-                        <XAxis dataKey="name" />
+                      <BarChart
+                        data={sectionChart}
+                        margin={isLipid ? { top: 8, right: 8, left: 0, bottom: 32 } : undefined}
+                      >
+                        <XAxis
+                          dataKey="name"
+                          interval="preserveStartEnd"
+                          minTickGap={isLipid ? 18 : 8}
+                          tick={{ fontSize: isLipid ? 10 : 12 }}
+                          height={isLipid ? 44 : undefined}
+                          tickFormatter={isLipid ? (value) => compactAxisLabel(value, 12) : undefined}
+                        />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
-                        <Legend />
+                        <Legend
+                          iconSize={isLipid ? 10 : 14}
+                          wrapperStyle={isLipid ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                        />
                         {categorySeries.map((item) => (
                           <Bar
                             key={item.key}
@@ -1331,5 +1470,3 @@ export default function TestResultPage({
     </div>
   );
 }
-
-
