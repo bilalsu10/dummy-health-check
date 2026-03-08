@@ -25,9 +25,9 @@ type HealthRow = Record<string, unknown>;
 const VISION_HEARING_KEYS = ["Hearing Test"];
 const HEARING_KEYS = ["Hearing Test", "ตรวจสมรรถภาพการได้ยิน"];
 
-const normalizeValue = (value: unknown) => String(value ?? "").trim();
+const ปกติizeValue = (value: unknown) => String(value ?? "").trim();
 const getRowYear = (row: HealthRow) =>
-  normalizeValue(row.Year ?? row.year ?? row["ปี"] ?? row["year"]);
+  ปกติizeValue(row.Year ?? row.year ?? row["ปี"] ?? row["year"]);
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
 
 const HEARING_FREQ_LABELS = ["500", "1000", "2000", "3000", "4000", "6000", "8000"];
@@ -38,7 +38,7 @@ const OVERVIEW_GROUPS = [
 ];
 
 const parseHearingValues = (value: unknown) => {
-  const raw = normalizeValue(value);
+  const raw = ปกติizeValue(value);
   if (!raw) return [];
   return raw
     .split(",")
@@ -51,7 +51,7 @@ const parseHearingValues = (value: unknown) => {
 const getHearingRawValue = (row: HealthRow | null) => {
   if (!row) return "";
   for (const key of HEARING_KEYS) {
-    const value = normalizeValue(row[key]);
+    const value = ปกติizeValue(row[key]);
     if (value) return value;
   }
   return "";
@@ -68,7 +68,7 @@ const YEAR_COLORS = {
 const resolveHearingStatus = (values: number[]) => {
   if (!values.length) return "unknown";
   const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
-  return avg > 25 ? "abnormal" : "normal";
+  return avg > 25 ? "ผิดปกติ" : "ปกติ";
 };
 
 export default function EyesReport() {
@@ -144,9 +144,9 @@ export default function EyesReport() {
     return baseRows
       .filter((row) => matchesFactory(row, factoryId))
       .map((row) => ({
-        empId: normalizeValue(row.SCG_EmpID),
-        name: normalizeValue(row.Name),
-        department: normalizeValue(row.Department),
+        empId: ปกติizeValue(row.SCG_EmpID),
+        name: ปกติizeValue(row.Name),
+        department: ปกติizeValue(row.Department),
       }))
       .filter((person) => person.empId);
   }, [rowsByYear, selectedYear, factoryId]);
@@ -156,7 +156,7 @@ export default function EyesReport() {
     if (!selectedYear) return null;
     return (
       rowsByYear[selectedYear]?.find(
-        (row) => normalizeValue(row.SCG_EmpID) === selectedEmpId && matchesFactory(row, factoryId),
+        (row) => ปกติizeValue(row.SCG_EmpID) === selectedEmpId && matchesFactory(row, factoryId),
       ) ??
       null
     );
@@ -167,7 +167,7 @@ export default function EyesReport() {
       return { right: [], left: [] };
     }
     const getRow = (year: string) =>
-      rowsByYear[year]?.find((row) => normalizeValue(row.SCG_EmpID) === selectedEmpId) ?? null;
+      rowsByYear[year]?.find((row) => ปกติizeValue(row.SCG_EmpID) === selectedEmpId) ?? null;
     const values2568 = parseHearingValues(getHearingRawValue(getRow("2568")));
     const values2567 = parseHearingValues(getHearingRawValue(getRow("2567")));
     const values2566 = parseHearingValues(getHearingRawValue(getRow("2566")));
@@ -215,7 +215,7 @@ export default function EyesReport() {
       const data = yearOrder.map((year) => {
         const row =
           rowsByYear[year]?.find(
-            (item) => normalizeValue(item.SCG_EmpID) === selectedEmpId && matchesFactory(item, factoryId),
+            (item) => ปกติizeValue(item.SCG_EmpID) === selectedEmpId && matchesFactory(item, factoryId),
           ) ??
           null;
         const values = parseHearingValues(getHearingRawValue(row));
@@ -223,8 +223,8 @@ export default function EyesReport() {
         const status = resolveHearingStatus(selected as number[]);
         return {
           year,
-          normal: status === "normal" ? 1 : null,
-          abnormal: status === "abnormal" ? 1 : null,
+          ปกติ: status === "ปกติ" ? 1 : null,
+          ผิดปกติ: status === "ผิดปกติ" ? 1 : null,
         };
       });
       return { label: category.label, data };
@@ -260,7 +260,7 @@ export default function EyesReport() {
       new Set(
         overviewRowsYear
           .filter((row) => (overviewFactory ? matchesFactory(row, Number(overviewFactory)) : true))
-          .map((row) => normalizeValue(row.Department))
+          .map((row) => ปกติizeValue(row.Department))
           .filter((value) => value && value !== "-"),
       ),
     ).sort((a, b) => a.localeCompare(b));
@@ -271,8 +271,8 @@ export default function EyesReport() {
       new Set(
         overviewRowsYear
           .filter((row) => (overviewFactory ? matchesFactory(row, Number(overviewFactory)) : true))
-          .filter((row) => (overviewDepartment ? normalizeValue(row.Department) === overviewDepartment : true))
-          .map((row) => normalizeValue(row.Section))
+          .filter((row) => (overviewDepartment ? ปกติizeValue(row.Department) === overviewDepartment : true))
+          .map((row) => ปกติizeValue(row.Section))
           .filter((value) => value && value !== "-"),
       ),
     ).sort((a, b) => a.localeCompare(b));
@@ -288,15 +288,15 @@ export default function EyesReport() {
     if (groupKey === "Department") {
       return overviewRowsYear.filter((row) => {
         if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
-        if (overviewDepartment && normalizeValue(row.Department) !== overviewDepartment) return false;
+        if (overviewDepartment && ปกติizeValue(row.Department) !== overviewDepartment) return false;
         return true;
       });
     }
     if (groupKey === "Section") {
       return overviewRowsYear.filter((row) => {
         if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
-        if (overviewDepartment && normalizeValue(row.Department) !== overviewDepartment) return false;
-        if (overviewSection && normalizeValue(row.Section) !== overviewSection) return false;
+        if (overviewDepartment && ปกติizeValue(row.Department) !== overviewDepartment) return false;
+        if (overviewSection && ปกติizeValue(row.Section) !== overviewSection) return false;
         return true;
       });
     }
@@ -310,35 +310,49 @@ export default function EyesReport() {
     return false;
   };
 
+  const getSubChartHeader = (chartKey: string, fallbackLabel: string) => {
+    if (chartKey === "Factory" && overviewFactory) {
+      const byId: Record<string, string> = { "1": "TS", "2": "TL", "3": "KK", "4": "BS" };
+      return byId[overviewFactory] ?? fallbackLabel;
+    }
+    if (chartKey === "Department" && overviewDepartment) {
+      return overviewDepartment;
+    }
+    if (chartKey === "Section" && overviewSection) {
+      return overviewSection;
+    }
+    return fallbackLabel;
+  };
+
   const buildGroupCounts = (groupKey: string, indices: number[]) => {
     const rows = getRowsForGroupChart(groupKey);
-    const grouped = new Map<string, { normal: number; abnormal: number }>();
+    const grouped = new Map<string, { ปกติ: number; ผิดปกติ: number }>();
     rows.forEach((row) => {
       const groupName =
         groupKey === "Factory"
           ? factoryLabelFromRow(row)
-          : normalizeValue(row[groupKey]) || "Unspecified";
+          : ปกติizeValue(row[groupKey]) || "Unspecified";
       const values = parseHearingValues(getHearingRawValue(row));
       if (!values.length) return;
       const selected = indices.map((idx) => values[idx]).filter((val) => Number.isFinite(val));
       if (!selected.length) return;
       const avg = selected.reduce((sum, val) => sum + val, 0) / selected.length;
-      const bucket = avg > 25 ? "abnormal" : "normal";
+      const bucket = avg > 25 ? "ผิดปกติ" : "ปกติ";
       if (!grouped.has(groupName)) {
-        grouped.set(groupName, { normal: 0, abnormal: 0 });
+        grouped.set(groupName, { ปกติ: 0, ผิดปกติ: 0 });
       }
       grouped.get(groupName)![bucket] += 1;
     });
     const data = Array.from(grouped.entries())
       .map(([name, counts]) => ({ name, ...counts }))
-      .sort((a, b) => b.normal + b.abnormal - (a.normal + a.abnormal));
+      .sort((a, b) => b.ปกติ + b.ผิดปกติ - (a.ปกติ + a.ผิดปกติ));
     const totals = data.reduce(
       (acc, item) => {
-        acc.normal += item.normal ?? 0;
-        acc.abnormal += item.abnormal ?? 0;
+        acc.ปกติ += item.ปกติ ?? 0;
+        acc.ผิดปกติ += item.ผิดปกติ ?? 0;
         return acc;
       },
-      { normal: 0, abnormal: 0 },
+      { ปกติ: 0, ผิดปกติ: 0 },
     );
     return { data, totals };
   };
@@ -358,11 +372,11 @@ export default function EyesReport() {
       totals: OVERVIEW_GROUPS.reduce(
         (acc, group) => {
           const t = buildGroupCounts(group.key, section.indices).totals;
-          acc.normal += t.normal;
-          acc.abnormal += t.abnormal;
+          acc.ปกติ += t.ปกติ;
+          acc.ผิดปกติ += t.ผิดปกติ;
           return acc;
         },
-        { normal: 0, abnormal: 0 },
+        { ปกติ: 0, ผิดปกติ: 0 },
       ),
     }));
   }, [overviewRowsYear, overviewFactory, overviewDepartment, overviewSection]);
@@ -427,16 +441,16 @@ export default function EyesReport() {
               <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-white p-4 shadow-sm">
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-lg font-semibold text-indigo-700">
-                    {getInitial(normalizeValue(selectedPerson.Name)) || "?"}
+                    {getInitial(ปกติizeValue(selectedPerson.Name)) || "?"}
                   </div>
                   <div>
                     <div className="text-xs text-indigo-500">พนักงานที่เลือก</div>
                     <div className="text-base font-semibold text-gray-900">
-                      {normalizeValue(selectedPerson.Name) || "Unknown"}
+                      {ปกติizeValue(selectedPerson.Name) || "Unknown"}
                     </div>
                     <div className="text-sm text-gray-600">
-                      {normalizeValue(selectedPerson.Position)} ·{" "}
-                      {normalizeValue(selectedPerson.Department)}
+                      {ปกติizeValue(selectedPerson.Position)} ·{" "}
+                      {ปกติizeValue(selectedPerson.Department)}
                     </div>
                     {selectedEmpId && (
                       <div className="mt-2 inline-flex rounded-full border border-indigo-200 bg-white px-3 py-1 text-xs text-indigo-600">
@@ -610,15 +624,15 @@ export default function EyesReport() {
                               <Legend />
                               <Line
                                 type="monotone"
-                                dataKey="normal"
-                                name="Normal"
+                                dataKey="ปกติ"
+                                name="ปกติ"
                                 stroke="#16A34A"
                                 strokeWidth={2}
                               />
                               <Line
                                 type="monotone"
-                                dataKey="abnormal"
-                                name="Abnormal"
+                                dataKey="ผิดปกติ"
+                                name="ผิดปกติ"
                                 stroke="#DC2626"
                                 strokeWidth={2}
                               />
@@ -698,10 +712,10 @@ export default function EyesReport() {
                     <div className="text-xs uppercase text-gray-500">{chart.label}</div>
                     <div className="flex flex-wrap gap-2 text-xs">
                       <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700">
-                        Abnormal: {chart.totals.abnormal}
+                        ผิดปกติ: {chart.totals.ผิดปกติ}
                       </span>
                       <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
-                        Normal: {chart.totals.normal}
+                        ปกติ: {chart.totals.ปกติ}
                       </span>
                     </div>
                   </div>
@@ -709,13 +723,15 @@ export default function EyesReport() {
                     {chart.charts.map((subChart) => (
                       <div key={`${chart.label}-${subChart.key}`} className="rounded-xl border border-gray-200 bg-white p-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="text-sm font-semibold text-gray-700">{subChart.label}</div>
+                          <div className="text-sm font-semibold text-gray-700">
+                            {getSubChartHeader(subChart.key, subChart.label)}
+                          </div>
                           <div className="flex flex-wrap gap-2 text-xs">
                             <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700">
-                              Abnormal: {subChart.totals.abnormal}
+                              ผิดปกติ: {subChart.totals.ผิดปกติ}
                             </span>
                             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
-                              Normal: {subChart.totals.normal}
+                              ปกติ: {subChart.totals.ปกติ}
                             </span>
                           </div>
                         </div>
@@ -726,8 +742,8 @@ export default function EyesReport() {
                                 <PieChart>
                                   <Pie
                                     data={[
-                                      { name: "Normal", value: subChart.totals.normal },
-                                      { name: "Abnormal", value: subChart.totals.abnormal },
+                                      { name: "ปกติ", value: subChart.totals.ปกติ },
+                                      { name: "ผิดปกติ", value: subChart.totals.ผิดปกติ },
                                     ]}
                                     dataKey="value"
                                     nameKey="name"
@@ -750,8 +766,8 @@ export default function EyesReport() {
                                   <YAxis allowDecimals={false} />
                                   <Tooltip />
                                   <Legend />
-                                  <Bar dataKey="abnormal" name="Abnormal" fill="#DC2626" stackId="status" />
-                                  <Bar dataKey="normal" name="Normal" fill="#16A34A" stackId="status" />
+                                  <Bar dataKey="ผิดปกติ" name="ผิดปกติ" fill="#DC2626" stackId="status" />
+                                  <Bar dataKey="ปกติ" name="ปกติ" fill="#16A34A" stackId="status" />
                                 </BarChart>
                               )}
                             </ResponsiveContainer>
@@ -773,3 +789,4 @@ export default function EyesReport() {
     </div>
   );
 }
+

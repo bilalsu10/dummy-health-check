@@ -147,6 +147,36 @@ const compactAxisLabel = (value: unknown, max = 14) => {
   return text.length > max ? `${text.slice(0, max)}...` : text;
 };
 
+const normalizeGroupName = (value: unknown, fallback: string) => {
+  const text = normalizeValue(value);
+  if (!text || text === "-") return fallback;
+  return text;
+};
+
+const toNumericValues = (values: Array<number | null | undefined>) =>
+  values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+
+const getPaddedDomain = (values: number[]): [number, number] => {
+  if (!values.length) return [0, 1];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+
+  if (min === max) {
+    const pad = Math.max(Math.abs(min) * 0.2, 1);
+    return [Math.max(0, min - pad), max + pad];
+  }
+
+  const range = max - min;
+  const pad = Math.max(range * 0.2, 1);
+  return [Math.max(0, min - pad), max + pad];
+};
+
+const integerTick = (value: unknown) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return String(Math.round(n));
+};
+
 const categorizeNormalAbnormal = (value: string, testKey: string) => {
   if (isNotTested(value)) return "notTested";
   if (testKey === "Blood Pressure") {
@@ -433,6 +463,23 @@ const getResultNumberDisplay = (value: string, testKey: string) => {
   return numeric === null ? "-" : numeric.toString();
 };
 
+const parseBloodPressureValues = (value: string) => {
+  const slash = value.match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
+  if (slash) return { sys: slash[1], dia: slash[2] };
+
+  const commaParts = value
+    .split(",")
+    .map((part) => part.trim())
+    .map((part) => Number(part))
+    .filter((n) => Number.isFinite(n));
+
+  if (commaParts.length >= 2) {
+    return { sys: String(Math.round(commaParts[0])), dia: String(Math.round(commaParts[1])) };
+  }
+
+  return null;
+};
+
 type TrendTooltipProps = {
   active?: boolean;
   payload?: Array<{ payload?: { raw?: string; value?: number | null; bucket?: string } }>;
@@ -525,6 +572,7 @@ export default function TestResultPage({
       ];
 
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
+  const [overviewRowsByYear, setOverviewRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [factoryId, setFactoryId] = useState<number>(1);
@@ -532,6 +580,7 @@ export default function TestResultPage({
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState("");
   const [overviewYear, setOverviewYear] = useState("");
+  const [overviewFactory, setOverviewFactory] = useState("");
   const [overviewDepartment, setOverviewDepartment] = useState("");
   const [overviewSection, setOverviewSection] = useState("");
   const [overviewDepartmentSearch, setOverviewDepartmentSearch] = useState("");
@@ -544,14 +593,22 @@ export default function TestResultPage({
         setLoading(true);
         setError(null);
         const dataAll = await fetchDatasetJson<HealthRow[]>("ALL/all.json", { cache: "no-store" });
-        const filtered = Array.isArray(dataAll) ? dataAll.filter((row) => matchesFactory(row, factoryId)) : [];
+        const allRows = Array.isArray(dataAll) ? dataAll : [];
+        const filtered = allRows.filter((row) => matchesFactory(row, factoryId));
 
         const years = Array.from(
           new Set(filtered.map((row) => getRowYear(row)).filter(Boolean)),
         ).sort((a, b) => Number(a) - Number(b));
+        const allYears = Array.from(
+          new Set(allRows.map((row) => getRowYear(row)).filter(Boolean)),
+        ).sort((a, b) => Number(a) - Number(b));
 
         const nextRowsByYear = years.reduce<Record<string, HealthRow[]>>((acc, year) => {
           acc[year] = filtered.filter((row) => getRowYear(row) === year);
+          return acc;
+        }, {});
+        const nextOverviewRowsByYear = allYears.reduce<Record<string, HealthRow[]>>((acc, year) => {
+          acc[year] = allRows.filter((row) => getRowYear(row) === year);
           return acc;
         }, {});
 
@@ -565,12 +622,14 @@ export default function TestResultPage({
         if (active) {
           setAvailableYears(yearsWithTestData.length ? yearsWithTestData : years);
           setRowsByYear(nextRowsByYear);
+          setOverviewRowsByYear(nextOverviewRowsByYear);
         }
       } catch (err) {
         if (active) {
           const message = err instanceof Error ? err.message : "Failed to load data";
           setError(message);
           setRowsByYear({});
+          setOverviewRowsByYear({});
         }
       } finally {
         if (active) setLoading(false);
@@ -587,11 +646,19 @@ export default function TestResultPage({
   }, [factoryId]);
 
   useEffect(() => {
+    setOverviewFactory("");
     setOverviewDepartment("");
     setOverviewSection("");
     setOverviewDepartmentSearch("");
     setOverviewSectionSearch("");
   }, [factoryId, overviewYear]);
+
+  useEffect(() => {
+    setOverviewDepartment("");
+    setOverviewSection("");
+    setOverviewDepartmentSearch("");
+    setOverviewSectionSearch("");
+  }, [overviewFactory]);
 
   useEffect(() => {
     setOverviewSection("");
@@ -675,9 +742,13 @@ export default function TestResultPage({
     ? /(\d{2,3})\s*\/\s*(\d{2,3})/.test(selectedResult.raw)
     : false;
   const showResultCard =
+    !isBloodPressure &&
     (testKey !== "Blood Pressure" || hasBloodPressureNumeric) &&
     testKey !== "Lipid Profile" &&
     !isLiver;
+  const bpValues = selectedResult ? parseBloodPressureValues(selectedResult.raw) : null;
+  const bpSysValue = bpValues?.sys ?? "-";
+  const bpDiaValue = bpValues?.dia ?? "-";
 
   const trend = useMemo(() => {
     if (!selectedEmpId) return [];
@@ -757,12 +828,16 @@ export default function TestResultPage({
     ];
   }, [isLiver, selectedEmpId, selectedPerson?.Sex, individualYears, rowsByYear, testKey, fallbackKeys]);
 
-  const overviewRowsYear = useMemo(() => rowsByYear[overviewYear] ?? [], [rowsByYear, overviewYear]);
+  const overviewRowsYear = useMemo(
+    () => overviewRowsByYear[overviewYear] ?? [],
+    [overviewRowsByYear, overviewYear],
+  );
 
   const overviewDepartmentOptions = useMemo(() => {
     return Array.from(
       new Set(
         overviewRowsYear
+          .filter((row) => (overviewFactory ? matchesFactory(row, Number(overviewFactory)) : true))
           .map((row) => normalizeValue(row.Department))
           .filter((value) => value && value !== "-"),
       ),
@@ -773,12 +848,13 @@ export default function TestResultPage({
           ? department.toLowerCase().includes(overviewDepartmentSearch.trim().toLowerCase())
           : true,
       );
-  }, [overviewRowsYear, overviewDepartmentSearch]);
+  }, [overviewRowsYear, overviewFactory, overviewDepartmentSearch]);
 
   const overviewSectionOptions = useMemo(() => {
     return Array.from(
       new Set(
         overviewRowsYear
+          .filter((row) => (overviewFactory ? matchesFactory(row, Number(overviewFactory)) : true))
           .filter((row) =>
             overviewDepartment ? normalizeValue(row.Department) === overviewDepartment : true,
           )
@@ -792,25 +868,34 @@ export default function TestResultPage({
           ? section.toLowerCase().includes(overviewSectionSearch.trim().toLowerCase())
           : true,
       );
-  }, [overviewRowsYear, overviewDepartment, overviewSectionSearch]);
+  }, [overviewRowsYear, overviewFactory, overviewDepartment, overviewSectionSearch]);
 
   const overviewRows = useMemo(() => {
     return overviewRowsYear.filter((row) => {
+      if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
       const department = normalizeValue(row.Department);
       const section = normalizeValue(row.Section);
       if (overviewDepartment && department !== overviewDepartment) return false;
       if (overviewSection && section !== overviewSection) return false;
       return true;
     });
-  }, [overviewRowsYear, overviewDepartment, overviewSection]);
+  }, [overviewRowsYear, overviewFactory, overviewDepartment, overviewSection]);
 
   const overviewRowsForDepartmentChart = useMemo(() => {
     return overviewRowsYear.filter((row) => {
+      if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
       const department = normalizeValue(row.Department);
       if (overviewDepartment && department !== overviewDepartment) return false;
       return true;
     });
-  }, [overviewRowsYear, overviewDepartment]);
+  }, [overviewRowsYear, overviewFactory, overviewDepartment]);
+
+  const overviewRowsForFactoryChart = useMemo(() => {
+    return overviewRowsYear.filter((row) => {
+      if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
+      return true;
+    });
+  }, [overviewRowsYear, overviewFactory]);
 
   const summaryOverview = useMemo(() => {
     const rows = overviewRows;
@@ -859,7 +944,7 @@ export default function TestResultPage({
       const groupName =
         groupKey === "Factory"
           ? factoryLabelFromRow(row)
-          : normalizeValue(row[groupKey]) || "Unspecified";
+          : normalizeGroupName(row[groupKey], groupKey === "Section" ? "ไม่ระบุ Section" : "ไม่ระบุ Department");
       const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
       if (!grouped.has(groupName)) {
         grouped.set(
@@ -887,8 +972,8 @@ export default function TestResultPage({
   );
 
   const factoryChart = useMemo(
-    () => buildGroupChart("Factory", overviewRowsForDepartmentChart),
-    [overviewRowsForDepartmentChart, testKey, fallbackKeys],
+    () => buildGroupChart("Factory", overviewRowsForFactoryChart),
+    [overviewRowsForFactoryChart, testKey, fallbackKeys],
   );
 
   const sectionChart = useMemo(
@@ -905,11 +990,13 @@ export default function TestResultPage({
   }, [factoryChart, categorySeries]);
 
   const singleSectionName = useMemo(() => {
-    if (overviewSection) return overviewSection;
-    if (overviewSectionOptions.length === 1) return overviewSectionOptions[0];
+    if (overviewSection && overviewSection !== "-") return overviewSection;
+    if (overviewSectionOptions.length === 1) {
+      return overviewSectionOptions[0] === "-" ? "ไม่ระบุ Section" : overviewSectionOptions[0];
+    }
     if (sectionChart.length === 1) {
       const name = normalizeValue(sectionChart[0]?.name);
-      return name || "ไม่ระบุ Section";
+      return !name || name === "-" ? "ไม่ระบุ Section" : name;
     }
     return "";
   }, [overviewSection, overviewSectionOptions, sectionChart]);
@@ -1005,6 +1092,18 @@ export default function TestResultPage({
                   </label>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {isBloodPressure && bpValues ? (
+                    <>
+                      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                        <div className="text-xs text-blue-700">BP Sys</div>
+                        <div className="mt-2 text-2xl font-semibold text-blue-900">{bpSysValue}</div>
+                      </div>
+                      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                        <div className="text-xs text-indigo-700">BP Dia</div>
+                        <div className="mt-2 text-2xl font-semibold text-indigo-900">{bpDiaValue}</div>
+                      </div>
+                    </>
+                  ) : null}
                   {showResultCard ? (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div className="text-xs text-slate-600">ผลตรวจ</div>
@@ -1149,10 +1248,14 @@ export default function TestResultPage({
                             <LineChart data={metric.data}>
                               <XAxis
                                 dataKey="year"
-                                padding={{ left: 36, right: 36 }}
+                                padding={{ left: 48, right: 48 }}
                                 tickMargin={6}
                               />
-                              <YAxis allowDecimals />
+                              <YAxis
+                                allowDecimals={false}
+                                tickFormatter={integerTick}
+                                domain={getPaddedDomain(toNumericValues(metric.data.map((d) => d.value)))}
+                              />
                               <Tooltip />
                               <Line
                                 type="monotone"
@@ -1203,8 +1306,12 @@ export default function TestResultPage({
                         <div className="h-36">
                           <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={metric.data}>
-                              <XAxis dataKey="year" padding={{ left: 24, right: 24 }} tickMargin={6} />
-                              <YAxis allowDecimals />
+                              <XAxis dataKey="year" padding={{ left: 48, right: 48 }} tickMargin={6} />
+                              <YAxis
+                                allowDecimals={false}
+                                tickFormatter={integerTick}
+                                domain={getPaddedDomain(toNumericValues(metric.data.map((d) => d.value)))}
+                              />
                               <Tooltip />
                               <Line
                                 type="monotone"
@@ -1251,9 +1358,13 @@ export default function TestResultPage({
                   <div className="mt-4 h-48">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={trend}>
-                        <XAxis dataKey="year" />
+                        <XAxis dataKey="year" padding={{ left: 48, right: 48 }} />
                         {isNumericTrend ? (
-                          <YAxis allowDecimals />
+                          <YAxis
+                            allowDecimals={false}
+                            tickFormatter={integerTick}
+                            domain={getPaddedDomain(toNumericValues(trend.map((p) => p.value)))}
+                          />
                         ) : (
                           <YAxis
                             domain={isBloodPressure ? [0.1, 1.1] : [0.4, 1.1]}
@@ -1346,6 +1457,20 @@ export default function TestResultPage({
                     {year}
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-2 text-xs text-gray-600">
+              Factory
+              <select
+                className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                value={overviewFactory}
+                onChange={(event) => setOverviewFactory(event.target.value)}
+              >
+                <option value="">ทั้งหมด</option>
+                <option value="1">TS</option>
+                <option value="2">TL</option>
+                <option value="3">KK</option>
+                <option value="4">BS</option>
               </select>
             </label>
             <label className="flex flex-col gap-2 text-xs text-gray-600">
