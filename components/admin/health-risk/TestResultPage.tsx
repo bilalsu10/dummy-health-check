@@ -13,6 +13,7 @@ import {
   LineChart,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -26,6 +27,33 @@ type TestResultPageProps = {
   testKey: string;
   fallbackKeys?: string[];
   backLabel?: string;
+};
+
+const TEST_DISPLAY_LABELS: Record<string, string> = {
+  "Blood Pressure": "ความดันโลหิต",
+  BMI: "ดัชนีมวลกาย (BMI)",
+  "Blood Glucose": "ระดับน้ำตาลในเลือด",
+  "Liver Function": "ตรวจการทำงานของตับ",
+  "Kidney Function": "ตรวจการทำงานของไต",
+  "Uric Acid": "ตรวจกรดยูริคในเลือด",
+  "Lipid Profile": "ไขมันในเลือด (Lipid Profile)",
+  "PSA (Prostate Specific Antigen)": "สารบ่งชี้มะเร็งต่อมลูกหมากในเลือด (PSA)",
+  "Amphetamine": "ตรวจสารเสพติดในปัสสาวะ",
+  "Blood Lead": "ตรวจสารตะกั่วในเลือด (Lead)",
+  "Blood Cadmium": "ตรวจสารแคดเมียมในเลือด (Cadmium in Blood)",
+  Urinalysis: "ตรวจปัสสาวะ (Urinalysis)",
+  CBC: "ตรวจความสมบูรณ์ของเม็ดเลือด (CBC)",
+  EKG: "ตรวจคลื่นไฟฟ้าหัวใจ (EKG)",
+  "Lung Function": "ตรวจสมรรถภาพปอด",
+  "Chest X-ray": "เอกซเรย์ทรวงอก",
+  "Stool Exam": "ตรวจอุจจาระ (Stool Examination)",
+  "Urine Arsenic": "ตรวจสารหนูในปัสสาวะ (Arsenic in Urine)",
+  "Urine Acetone": "ตรวจสารอะซีโตนในปัสสาวะ (Acetone in Urine)",
+  "Urine Mercury": "ตรวจสารปรอทในปัสสาวะ (Mercury in Urine)",
+  "Urine Toluene": "ตรวจสารโทลูอีนในปัสสาวะ (Toluene)",
+  "Urine Xylene": "ตรวจสารไซลีนในปัสสาวะ (Xylene)",
+  "Urine Methyl Ethyl Ketone": "ตรวจสารเมทิล เอทิล คีโตนในปัสสาวะ (Methyl Ethyl Ketone in Urine)",
+  "Urine Phenol": "ตรวจสารฟีนอลในปัสสาวะ (Phenol in Urine)",
 };
 
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
@@ -79,6 +107,7 @@ const isNotTested = (value: string) => {
   const isDashOnly = /^[\-\u2010-\u2015\u2212]+(\s*,\s*[\-\u2010-\u2015\u2212]+)*$/.test(normalized);
 
   return (
+    normalized === "" ||
     isDashOnly ||
     normalized.includes("ไม่ได้รับการตรวจ") ||
     normalized.includes("ไม่รับการตรวจ") ||
@@ -141,6 +170,51 @@ const parseLiverParts = (value: string) => {
   return { sgot, sgpt, alkp, summary };
 };
 
+const parseKidneyParts = (value: string) => {
+  const parts = value.split(",").map((part) => part.trim());
+  const toNum = (raw: string) => {
+    const cleaned = String(raw ?? "").replace("<", "").trim();
+    if (!cleaned) return null;
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
+  };
+  const bun = toNum(parts[0] ?? "");
+  const creatinine = toNum(parts[1] ?? "");
+  const summary = parts.slice(2).join(",").trim();
+
+  return { bun, creatinine, summary };
+};
+
+const getCreatinineRange = (sexValue: unknown) => {
+  const sexRaw = normalizeValue(sexValue).toLowerCase();
+  const isFemale =
+    sexRaw.includes("หญิง") ||
+    sexRaw === "f" ||
+    sexRaw.includes("female");
+
+  return isFemale ? { min: 0.52, max: 1.04 } : { min: 0.66, max: 1.25 };
+};
+
+const getBunRange = (sexValue: unknown) => {
+  const sexRaw = normalizeValue(sexValue).toLowerCase();
+  const isFemale =
+    sexRaw.includes("หญิง") ||
+    sexRaw === "f" ||
+    sexRaw.includes("female");
+
+  return isFemale ? { min: 7, max: 17 } : { min: 9, max: 20 };
+};
+
+const isBunAbnormal = (value: number, sexValue: unknown) => {
+  const range = getBunRange(sexValue);
+  return value < range.min || value > range.max;
+};
+
+const isCreatinineAbnormal = (value: number, sexValue: unknown) => {
+  const range = getCreatinineRange(sexValue);
+  return value < range.min || value > range.max;
+};
+
 const compactAxisLabel = (value: unknown, max = 14) => {
   const text = String(value ?? "").trim();
   if (!text) return "";
@@ -156,18 +230,19 @@ const normalizeGroupName = (value: unknown, fallback: string) => {
 const toNumericValues = (values: Array<number | null | undefined>) =>
   values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
 
-const getPaddedDomain = (values: number[]): [number, number] => {
-  if (!values.length) return [0, 1];
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+const getPaddedDomain = (values: number[], referenceValues: number[] = []): [number, number] => {
+  const allValues = [...values, ...referenceValues].filter((value) => Number.isFinite(value));
+  if (!allValues.length) return [0, 1];
+  const min = Math.min(...allValues);
+  const max = Math.max(...allValues);
 
   if (min === max) {
-    const pad = Math.max(Math.abs(min) * 0.2, 1);
+    const pad = Math.max(Math.abs(min) * 0.4, 2);
     return [Math.max(0, min - pad), max + pad];
   }
 
   const range = max - min;
-  const pad = Math.max(range * 0.2, 1);
+  const pad = Math.max(range * 0.4, 2);
   return [Math.max(0, min - pad), max + pad];
 };
 
@@ -177,7 +252,7 @@ const integerTick = (value: unknown) => {
   return String(Math.round(n));
 };
 
-const categorizeNormalAbnormal = (value: string, testKey: string) => {
+const categorizeNormalAbnormal = (value: string, testKey: string, sexValue?: unknown) => {
   if (isNotTested(value)) return "notTested";
   if (testKey === "Blood Pressure") {
     if (value.includes("ความดันโลหิตสูง") || value.includes("สูง")) return "high";
@@ -231,6 +306,21 @@ const categorizeNormalAbnormal = (value: string, testKey: string) => {
     if (summaryText.includes("ALKP")) return "alkpAbnormal";
     if (summaryText.includes("ปกติ")) return "normal";
     if (summaryText.includes("ผิดปกติ")) return "sgotAbnormal";
+    return "other";
+  }
+  if (testKey === "Kidney Function") {
+    const { bun, creatinine, summary } = parseKidneyParts(value);
+    const hasAnyNumeric = [bun, creatinine].some((n) => n !== null);
+    if (hasAnyNumeric) {
+      if (bun !== null && isBunAbnormal(bun, sexValue)) return "bunAbnormal";
+      if (creatinine !== null && isCreatinineAbnormal(creatinine, sexValue)) return "creatinineAbnormal";
+      return "normal";
+    }
+
+    const summaryText = summary.replace(/\s+/g, "");
+    if (!summaryText) return "other";
+    if (summaryText.includes("ผิดปกติ")) return "bunAbnormal";
+    if (summaryText.includes("ปกติ")) return "normal";
     return "other";
   }
   const threshold = NUMERIC_THRESHOLDS[testKey];
@@ -300,6 +390,10 @@ const categorizeNormalAbnormal = (value: string, testKey: string) => {
     }
     if (value.includes("ปกติ")) return "normal";
   }
+  if (testKey === "Stool Exam") {
+    if (value.includes("ปกติ")) return "normal";
+    return "abnormal";
+  }
   if (value.includes("ไม่เกินค่าอ้างอิง")) return "normal";
   if (value.includes("เกินค่าอ้างอิง")) return "abnormal";
   if (value.includes("สูงกว่าปกติ")) return "abnormal";
@@ -333,6 +427,10 @@ const categoryLabel = (bucket: string) => {
       return "SGPT ผิดปกติ";
     case "alkpAbnormal":
       return "ALKP ผิดปกติ";
+    case "bunAbnormal":
+      return "BUN ผิดปกติ";
+    case "creatinineAbnormal":
+      return "Creatinine ผิดปกติ";
     case "notTested":
       return "ไม่ได้รับการตรวจ";
     default:
@@ -341,6 +439,12 @@ const categoryLabel = (bucket: string) => {
 };
 
 const categoryLabelFromValue = (value: string, bucket: string, testKey?: string) => {
+  if (testKey === "Stool Exam") {
+    if (bucket === "normal") return "ปกติ";
+    if (bucket === "notTested") return "ไม่ได้รับการตรวจ";
+    if (bucket === "abnormal") return "ผิดปกติ";
+    return categoryLabel(bucket);
+  }
   if (testKey === "Lipid Profile") {
     const { abnormalities, summary } = parseLipidParts(value);
     if (abnormalities.length) return abnormalities.join(" - ");
@@ -363,10 +467,12 @@ const categoryLabelFromValue = (value: string, bucket: string, testKey?: string)
   if (bucket === "sgotAbnormal") return "SGOT ผิดปกติ";
   if (bucket === "sgptAbnormal") return "SGPT ผิดปกติ";
   if (bucket === "alkpAbnormal") return "ALKP ผิดปกติ";
+  if (bucket === "bunAbnormal") return "BUN ผิดปกติ";
+  if (bucket === "creatinineAbnormal") return "Creatinine ผิดปกติ";
   return categoryLabel(bucket);
 };
 
-const legendLabelFormatter = (value: string, isLipid: boolean, isLiver: boolean) => {
+const legendLabelFormatter = (value: string, isLipid: boolean, isLiver: boolean, isKidney: boolean) => {
   if (isLipid) {
     return value;
   }
@@ -374,6 +480,11 @@ const legendLabelFormatter = (value: string, isLipid: boolean, isLiver: boolean)
     if (value === "SGOT ผิดปกติ") return "SGOT";
     if (value === "SGPT ผิดปกติ") return "SGPT";
     if (value === "ALKP ผิดปกติ") return "ALKP";
+    if (value === "ไม่ได้รับการตรวจ") return "ไม่ตรวจ";
+  }
+  if (isKidney) {
+    if (value === "BUN ผิดปกติ") return "BUN";
+    if (value === "Creatinine ผิดปกติ") return "Creatinine";
     if (value === "ไม่ได้รับการตรวจ") return "ไม่ตรวจ";
   }
   return value;
@@ -433,8 +544,9 @@ const getResultNumberDisplay = (value: string, testKey: string) => {
     return firstPart || "-";
   }
   if (testKey === "Stool Exam") {
-    const firstPart = value.split(",")[0]?.trim() ?? "";
-    return firstPart || "-";
+    if (isNotTested(value)) return "-";
+    if (value.includes("ปกติ")) return "ปกติ";
+    return value.trim() ? "ผิดปกติ" : "-";
   }
   if (testKey === "Amphetamine") {
     const lower = value.toLowerCase();
@@ -519,16 +631,55 @@ const TrendTooltip = ({ active, payload, testKey }: TrendTooltipProps) => {
   );
 };
 
+const renderValueDotWithLabel = ({
+  cx,
+  cy,
+  fill,
+  label,
+  radius = 6,
+}: {
+  cx?: number;
+  cy?: number;
+  fill: string;
+  label: string;
+  radius?: number;
+}) => {
+  if (typeof cx !== "number" || typeof cy !== "number" || !label) return null;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={radius} fill={fill} stroke="#FFFFFF" strokeWidth={2} />
+      <text x={cx + 8} y={cy - 8} fontSize={11} fill={fill}>
+        {label}
+      </text>
+    </g>
+  );
+};
+
+const REFERENCE_LINE_STYLE = {
+  stroke: "#9CA3AF",
+  strokeDasharray: "4 4",
+  strokeWidth: 1,
+};
+
+const referenceLineLabel = (value: string) => ({
+  value,
+  position: "right" as const,
+  fill: "#9CA3AF",
+  fontSize: 10,
+});
+
 export default function TestResultPage({
   title,
   testKey,
   fallbackKeys = [],
   backLabel = "Health Risk",
 }: TestResultPageProps) {
+  const displayTitle = TEST_DISPLAY_LABELS[testKey] ?? title;
   const isBloodPressure = testKey === "Blood Pressure";
   const isBMI = testKey === "BMI";
   const isLipid = testKey === "Lipid Profile";
   const isLiver = testKey === "Liver Function";
+  const isKidney = testKey === "Kidney Function";
   const showPieSliceLabel = !isLipid;
   const categorySeries = isBloodPressure
     ? [
@@ -555,7 +706,7 @@ export default function TestResultPage({
           { key: "triglycerideHigh", name: "ไตรกลีเซอไรด์สูง" },
           { key: "notTested", name: "ไม่ได้รับการตรวจ" },
         ]
-      : isLiver
+    : isLiver
         ? [
             { key: "normal", name: "ปกติ" },
             { key: "sgotAbnormal", name: "SGOT ผิดปกติ" },
@@ -564,6 +715,14 @@ export default function TestResultPage({
             { key: "notTested", name: "ไม่ได้รับการตรวจ" },
             { key: "other", name: "อื่นๆ" },
           ]
+        : isKidney
+          ? [
+              { key: "normal", name: "ปกติ" },
+              { key: "bunAbnormal", name: "BUN ผิดปกติ" },
+              { key: "creatinineAbnormal", name: "Creatinine ผิดปกติ" },
+              { key: "notTested", name: "ไม่ได้รับการตรวจ" },
+              { key: "other", name: "อื่นๆ" },
+            ]
       : [
         { key: "normal", name: "ปกติ" },
         { key: "abnormal", name: "ผิดปกติ" },
@@ -720,9 +879,10 @@ export default function TestResultPage({
   }, [rowsByYear, selectedEmpId, selectedYear]);
 
   useEffect(() => {
-    if (!selectedEmpId) return;
-    if (!selectedEmpAvailableYears.includes(selectedYear) && selectedEmpAvailableYears.length) {
-      setSelectedYear(selectedEmpAvailableYears[selectedEmpAvailableYears.length - 1]);
+    if (!selectedEmpId || !selectedEmpAvailableYears.length) return;
+    const latestYear = selectedEmpAvailableYears[selectedEmpAvailableYears.length - 1];
+    if (selectedYear !== latestYear) {
+      setSelectedYear(latestYear);
     }
   }, [selectedEmpId, selectedEmpAvailableYears, selectedYear]);
 
@@ -733,7 +893,7 @@ export default function TestResultPage({
       null;
     if (!row) return null;
     const raw = getTestRawValue(row, testKey, fallbackKeys);
-    const bucket = categorizeNormalAbnormal(raw, testKey);
+    const bucket = categorizeNormalAbnormal(raw, testKey, selectedPerson?.Sex);
     return { raw, bucket };
   }, [rowsByYear, selectedEmpId, selectedYear, testKey, fallbackKeys]);
 
@@ -745,7 +905,9 @@ export default function TestResultPage({
     !isBloodPressure &&
     (testKey !== "Blood Pressure" || hasBloodPressureNumeric) &&
     testKey !== "Lipid Profile" &&
-    !isLiver;
+    !isLiver &&
+    !isKidney &&
+    resultDisplay !== "-";
   const bpValues = selectedResult ? parseBloodPressureValues(selectedResult.raw) : null;
   const bpSysValue = bpValues?.sys ?? "-";
   const bpDiaValue = bpValues?.dia ?? "-";
@@ -757,7 +919,7 @@ export default function TestResultPage({
         rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
         null;
       const raw = getTestRawValue(row ?? null, testKey, fallbackKeys);
-      const bucket = categorizeNormalAbnormal(raw, testKey);
+      const bucket = categorizeNormalAbnormal(raw, testKey, selectedPerson?.Sex);
       const value = trendValue(raw, testKey);
       return {
         year,
@@ -827,6 +989,37 @@ export default function TestResultPage({
       buildMetric("alkp", "ALKP", (v) => v < 38 || v > 126),
     ];
   }, [isLiver, selectedEmpId, selectedPerson?.Sex, individualYears, rowsByYear, testKey, fallbackKeys]);
+
+  const kidneyTrend = useMemo(() => {
+    if (!isKidney || !selectedEmpId) return null;
+    const buildMetric = (key: "bun" | "creatinine", label: string) => {
+      const data = individualYears.map((year) => {
+        const row =
+          rowsByYear[year]?.find((item) => normalizeValue(item.SCG_EmpID) === selectedEmpId) ??
+          null;
+        const raw = getTestRawValue(row ?? null, testKey, fallbackKeys);
+        const kidney = parseKidneyParts(raw);
+        const metricValue = kidney[key];
+        const abnormal =
+          metricValue === null
+            ? null
+            : key === "bun"
+              ? isBunAbnormal(metricValue, selectedPerson?.Sex)
+              : isCreatinineAbnormal(metricValue, selectedPerson?.Sex);
+        return {
+          year,
+          value: metricValue,
+          abnormal,
+        };
+      });
+      return { key, label, data };
+    };
+
+    return [
+      buildMetric("bun", "BUN"),
+      buildMetric("creatinine", "Creatinine"),
+    ];
+  }, [isKidney, selectedEmpId, individualYears, rowsByYear, testKey, fallbackKeys, selectedPerson?.Sex]);
 
   const overviewRowsYear = useMemo(
     () => overviewRowsByYear[overviewYear] ?? [],
@@ -901,7 +1094,11 @@ export default function TestResultPage({
     const rows = overviewRows;
     const counts = Object.fromEntries(categorySeries.map((item) => [item.key, 0])) as Record<string, number>;
     rows.forEach((row) => {
-      const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
+      const bucket = categorizeNormalAbnormal(
+        getTestRawValue(row, testKey, fallbackKeys),
+        testKey,
+        row.Sex,
+      );
       counts[bucket] = (counts[bucket] ?? 0) + 1;
     });
     return counts;
@@ -911,7 +1108,11 @@ export default function TestResultPage({
     const rows = overviewRowsForDepartmentChart;
     const counts = Object.fromEntries(categorySeries.map((item) => [item.key, 0])) as Record<string, number>;
     rows.forEach((row) => {
-      const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
+      const bucket = categorizeNormalAbnormal(
+        getTestRawValue(row, testKey, fallbackKeys),
+        testKey,
+        row.Sex,
+      );
       counts[bucket] = (counts[bucket] ?? 0) + 1;
     });
     return counts;
@@ -945,7 +1146,11 @@ export default function TestResultPage({
         groupKey === "Factory"
           ? factoryLabelFromRow(row)
           : normalizeGroupName(row[groupKey], groupKey === "Section" ? "ไม่ระบุ Section" : "ไม่ระบุ Department");
-      const bucket = categorizeNormalAbnormal(getTestRawValue(row, testKey, fallbackKeys), testKey);
+      const bucket = categorizeNormalAbnormal(
+        getTestRawValue(row, testKey, fallbackKeys),
+        testKey,
+        row.Sex,
+      );
       if (!grouped.has(groupName)) {
         grouped.set(
           groupName,
@@ -1074,7 +1279,7 @@ export default function TestResultPage({
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-lg font-semibold text-gray-800">
-                    สรุปผลตรวจ {title} ปี {selectedYear}
+                    สรุปผลตรวจ {displayTitle} ปี {selectedYear}
                   </div>
                   <label className="flex items-center gap-2 text-xs text-gray-600">
                     Year
@@ -1110,7 +1315,7 @@ export default function TestResultPage({
                       <div className="mt-2 text-2xl font-semibold text-slate-900">{resultDisplay}</div>
                     </div>
                   ) : null}
-                  {!isLipid && !isLiver ? (
+                  {!isLipid && !isLiver && !isKidney ? (
                     <div
                       className={
                         selectedResult?.bucket === "normal"
@@ -1234,6 +1439,84 @@ export default function TestResultPage({
                     })()}
                   </div>
                 ) : null}
+                {isKidney && selectedResult ? (
+                  <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="mb-2 text-sm font-semibold text-gray-800">รายละเอียดค่าไต</div>
+                    {(() => {
+                      const kidney = parseKidneyParts(selectedResult.raw);
+                      const summaryBucket = categorizeNormalAbnormal(
+                        selectedResult.raw,
+                        testKey,
+                        selectedPerson?.Sex,
+                      );
+                      const summaryLabel = categoryLabelFromValue(
+                        selectedResult.raw,
+                        selectedResult.bucket,
+                        testKey,
+                      );
+                      const bunAbnormal =
+                        kidney.bun !== null ? isBunAbnormal(kidney.bun, selectedPerson?.Sex) : null;
+                      const creatinineAbnormal =
+                        kidney.creatinine !== null
+                          ? isCreatinineAbnormal(kidney.creatinine, selectedPerson?.Sex)
+                          : null;
+                      const items = [
+                        {
+                          label: "BUN",
+                          value: kidney.bun,
+                          status:
+                            kidney.bun === null ? "-" : bunAbnormal ? "ผิดปกติ" : "ปกติ",
+                          statusClass:
+                            kidney.bun === null
+                              ? "text-gray-500"
+                              : bunAbnormal
+                                ? "text-red-700"
+                                : "text-emerald-700",
+                        },
+                        {
+                          label: "Creatinine",
+                          value: kidney.creatinine,
+                          status:
+                            kidney.creatinine === null
+                              ? "-"
+                              : creatinineAbnormal
+                                ? "ผิดปกติ"
+                                : "ปกติ",
+                          statusClass:
+                            kidney.creatinine === null
+                              ? "text-gray-500"
+                              : creatinineAbnormal
+                                ? "text-red-700"
+                                : "text-emerald-700",
+                        },
+                      ];
+                      return (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
+                                <th className="py-2">รายการ</th>
+                                <th className="py-2">ค่า</th>
+                                <th className="py-2">สถานะ</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {items.map((item) => (
+                                <tr key={item.label} className="border-b border-gray-100">
+                                  <td className="py-2">{item.label}</td>
+                                  <td className="py-2">{item.value ?? "-"}</td>
+                                  <td className={`py-2 font-semibold ${item.statusClass}`}>
+                                    {item.status}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : null}
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -1245,7 +1528,7 @@ export default function TestResultPage({
                         <div className="mb-2 text-xs font-semibold text-gray-700">{metric.label}</div>
                         <div className="h-36">
                           <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={metric.data}>
+                            <LineChart data={metric.data} margin={{ top: 8, right: 36, left: 0, bottom: 0 }}>
                               <XAxis
                                 dataKey="year"
                                 padding={{ left: 48, right: 48 }}
@@ -1254,8 +1537,21 @@ export default function TestResultPage({
                               <YAxis
                                 allowDecimals={false}
                                 tickFormatter={integerTick}
-                                domain={getPaddedDomain(toNumericValues(metric.data.map((d) => d.value)))}
+                                domain={getPaddedDomain(
+                                  toNumericValues(metric.data.map((d) => d.value)),
+                                  metric.key === "tc"
+                                    ? [200]
+                                    : metric.key === "tg"
+                                      ? [150]
+                                      : metric.key === "hdl"
+                                        ? [35]
+                                        : [150],
+                                )}
                               />
+                              {metric.key === "tc" ? <ReferenceLine y={200} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("200")} /> : null}
+                              {metric.key === "tg" ? <ReferenceLine y={150} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("150")} /> : null}
+                              {metric.key === "hdl" ? <ReferenceLine y={35} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("35")} /> : null}
+                              {metric.key === "ldl" ? <ReferenceLine y={150} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("150")} /> : null}
                               <Tooltip />
                               <Line
                                 type="monotone"
@@ -1266,16 +1562,13 @@ export default function TestResultPage({
                                 dot={({ cx, cy, payload }) => {
                                   if (typeof cx !== "number" || typeof cy !== "number") return null;
                                   const isBad = Boolean(payload?.abnormal);
-                                  return (
-                                    <circle
-                                      cx={cx}
-                                      cy={cy}
-                                      r={6}
-                                      fill={isBad ? STRONG_RED_DOT : "#16A34A"}
-                                      stroke="#FFFFFF"
-                                      strokeWidth={2}
-                                    />
-                                  );
+                                  const value = payload?.value;
+                                  return renderValueDotWithLabel({
+                                    cx,
+                                    cy,
+                                    fill: isBad ? STRONG_RED_DOT : "#16A34A",
+                                    label: typeof value === "number" ? String(Math.round(value * 100) / 100) : "",
+                                  });
                                 }}
                                 activeDot={({ cx, cy, payload }) => {
                                   if (typeof cx !== "number" || typeof cy !== "number") return null;
@@ -1305,13 +1598,59 @@ export default function TestResultPage({
                         <div className="mb-2 text-xs font-semibold text-gray-700">{metric.label}</div>
                         <div className="h-36">
                           <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={metric.data}>
+                            <LineChart data={metric.data} margin={{ top: 8, right: 36, left: 0, bottom: 0 }}>
                               <XAxis dataKey="year" padding={{ left: 48, right: 48 }} tickMargin={6} />
                               <YAxis
                                 allowDecimals={false}
                                 tickFormatter={integerTick}
-                                domain={getPaddedDomain(toNumericValues(metric.data.map((d) => d.value)))}
+                                domain={getPaddedDomain(
+                                  toNumericValues(metric.data.map((d) => d.value)),
+                                  metric.key === "sgot"
+                                    ? [15, 46]
+                                    : metric.key === "sgpt"
+                                      ? [
+                                          normalizeValue(selectedPerson?.Sex).toLowerCase().includes("หญิง") ||
+                                          normalizeValue(selectedPerson?.Sex).toLowerCase() === "f" ||
+                                          normalizeValue(selectedPerson?.Sex).toLowerCase().includes("female")
+                                            ? 35
+                                            : 50,
+                                        ]
+                                      : [38, 126],
+                                )}
                               />
+                              {metric.key === "sgot" ? (
+                                <>
+                                  <ReferenceLine y={15} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("15")} />
+                                  <ReferenceLine y={46} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("46")} />
+                                </>
+                              ) : null}
+                              {metric.key === "sgpt" ? (
+                                <ReferenceLine
+                                  y={
+                                    normalizeValue(selectedPerson?.Sex).toLowerCase().includes("หญิง") ||
+                                    normalizeValue(selectedPerson?.Sex).toLowerCase() === "f" ||
+                                    normalizeValue(selectedPerson?.Sex).toLowerCase().includes("female")
+                                      ? 35
+                                      : 50
+                                  }
+                                  {...REFERENCE_LINE_STYLE}
+                                  label={referenceLineLabel(
+                                    String(
+                                      normalizeValue(selectedPerson?.Sex).toLowerCase().includes("หญิง") ||
+                                        normalizeValue(selectedPerson?.Sex).toLowerCase() === "f" ||
+                                        normalizeValue(selectedPerson?.Sex).toLowerCase().includes("female")
+                                        ? 35
+                                        : 50,
+                                    ),
+                                  )}
+                                />
+                              ) : null}
+                              {metric.key === "alkp" ? (
+                                <>
+                                  <ReferenceLine y={38} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("38")} />
+                                  <ReferenceLine y={126} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("126")} />
+                                </>
+                              ) : null}
                               <Tooltip />
                               <Line
                                 type="monotone"
@@ -1322,16 +1661,94 @@ export default function TestResultPage({
                                 dot={({ cx, cy, payload }) => {
                                   if (typeof cx !== "number" || typeof cy !== "number") return null;
                                   const isBad = Boolean(payload?.abnormal);
+                                  const value = payload?.value;
+                                  return renderValueDotWithLabel({
+                                    cx,
+                                    cy,
+                                    fill: isBad ? STRONG_RED_DOT : "#16A34A",
+                                    label: typeof value === "number" ? String(Math.round(value * 100) / 100) : "",
+                                  });
+                                }}
+                                activeDot={({ cx, cy, payload }) => {
+                                  if (typeof cx !== "number" || typeof cy !== "number") return null;
+                                  const isBad = Boolean(payload?.abnormal);
                                   return (
                                     <circle
                                       cx={cx}
                                       cy={cy}
-                                      r={6}
+                                      r={7}
                                       fill={isBad ? STRONG_RED_DOT : "#16A34A"}
                                       stroke="#FFFFFF"
                                       strokeWidth={2}
                                     />
                                   );
+                                }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : isKidney && kidneyTrend ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {kidneyTrend.map((metric) => (
+                      <div key={metric.key} className="rounded-lg border border-gray-200 p-3">
+                        <div className="mb-2 text-xs font-semibold text-gray-700">{metric.label}</div>
+                        <div className="h-36">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={metric.data} margin={{ top: 8, right: 36, left: 0, bottom: 0 }}>
+                              <XAxis dataKey="year" padding={{ left: 48, right: 48 }} tickMargin={6} />
+                              <YAxis
+                                allowDecimals={false}
+                                tickFormatter={integerTick}
+                                domain={getPaddedDomain(
+                                  toNumericValues(metric.data.map((d) => d.value)),
+                                  metric.key === "bun"
+                                    ? [getBunRange(selectedPerson?.Sex).min, getBunRange(selectedPerson?.Sex).max]
+                                    : [
+                                        getCreatinineRange(selectedPerson?.Sex).min,
+                                        getCreatinineRange(selectedPerson?.Sex).max,
+                                      ],
+                                )}
+                              />
+                              {metric.key === "bun" ? (
+                                <>
+                                  <ReferenceLine y={getBunRange(selectedPerson?.Sex).min} {...REFERENCE_LINE_STYLE} label={referenceLineLabel(String(getBunRange(selectedPerson?.Sex).min))} />
+                                  <ReferenceLine y={getBunRange(selectedPerson?.Sex).max} {...REFERENCE_LINE_STYLE} label={referenceLineLabel(String(getBunRange(selectedPerson?.Sex).max))} />
+                                </>
+                              ) : null}
+                              {metric.key === "creatinine" ? (
+                                <>
+                                  <ReferenceLine
+                                    y={getCreatinineRange(selectedPerson?.Sex).min}
+                                    {...REFERENCE_LINE_STYLE}
+                                    label={referenceLineLabel(String(getCreatinineRange(selectedPerson?.Sex).min))}
+                                  />
+                                  <ReferenceLine
+                                    y={getCreatinineRange(selectedPerson?.Sex).max}
+                                    {...REFERENCE_LINE_STYLE}
+                                    label={referenceLineLabel(String(getCreatinineRange(selectedPerson?.Sex).max))}
+                                  />
+                                </>
+                              ) : null}
+                              <Tooltip />
+                              <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#2563EB"
+                                strokeWidth={2}
+                                connectNulls={false}
+                                dot={({ cx, cy, payload }) => {
+                                  if (typeof cx !== "number" || typeof cy !== "number") return null;
+                                  const isBad = Boolean(payload?.abnormal);
+                                  const value = payload?.value;
+                                  return renderValueDotWithLabel({
+                                    cx,
+                                    cy,
+                                    fill: isBad ? STRONG_RED_DOT : "#16A34A",
+                                    label: typeof value === "number" ? String(Math.round(value * 100) / 100) : "",
+                                  });
                                 }}
                                 activeDot={({ cx, cy, payload }) => {
                                   if (typeof cx !== "number" || typeof cy !== "number") return null;
@@ -1357,17 +1774,20 @@ export default function TestResultPage({
                 ) : (
                   <div className="mt-4 h-48">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={trend}>
+                      <LineChart data={trend} margin={{ top: 8, right: 36, left: 0, bottom: 0 }}>
                         <XAxis dataKey="year" padding={{ left: 48, right: 48 }} />
                         {isNumericTrend ? (
-                          <YAxis
-                            allowDecimals={false}
-                            tickFormatter={integerTick}
-                            domain={getPaddedDomain(toNumericValues(trend.map((p) => p.value)))}
-                          />
+                            <YAxis
+                              allowDecimals={false}
+                              tickFormatter={integerTick}
+                              domain={getPaddedDomain(
+                                toNumericValues(trend.map((p) => p.value)),
+                                testKey === "BMI" ? [18.5, 22.99] : testKey === "Blood Glucose" ? [70, 99] : [],
+                              )}
+                            />
                         ) : (
                           <YAxis
-                            domain={isBloodPressure ? [0.1, 1.1] : [0.4, 1.1]}
+                            domain={isBloodPressure ? [0, 1.3] : [0.3, 1.3]}
                             ticks={isBloodPressure ? [0.2, 0.6, 1] : [0.6, 1]}
                             tickFormatter={(value) => {
                               if (isBloodPressure) return value >= 1 ? "สูง" : value >= 0.6 ? "ปกติ" : "ต่ำ";
@@ -1375,6 +1795,17 @@ export default function TestResultPage({
                             }}
                           />
                         )}
+                        {isNumericTrend && testKey === "BMI" ? (
+                          <>
+                            <ReferenceLine y={18.5} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("18.5")} />
+                            <ReferenceLine y={22.99} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("22.99")} />
+                          </>
+                        ) : isNumericTrend && testKey === "Blood Glucose" ? (
+                          <>
+                            <ReferenceLine y={70} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("70")} />
+                            <ReferenceLine y={99} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("99")} />
+                          </>
+                        ) : null}
                         <Tooltip content={<TrendTooltip testKey={testKey} />} />
                         <Line
                           type="monotone"
@@ -1395,16 +1826,18 @@ export default function TestResultPage({
                               bucket === "ldlHigh"
                                 ? STRONG_RED_DOT
                                 : "#2563EB";
-                            return (
-                              <circle
-                                cx={cx}
-                                cy={cy}
-                                r={4}
-                                fill={fill}
-                                stroke="#1F2937"
-                                strokeWidth={0.5}
-                              />
-                            );
+                            const label = isNumericTrend
+                              ? typeof payload?.value === "number"
+                                ? String(Math.round(payload.value * 100) / 100)
+                                : ""
+                              : categoryLabelFromValue(String(payload?.raw ?? ""), bucket, testKey);
+                            return renderValueDotWithLabel({
+                              cx,
+                              cy,
+                              fill,
+                              label,
+                              radius: 4,
+                            });
                           }}
                           activeDot={({ cx, cy, payload }) => {
                             if (typeof cx !== "number" || typeof cy !== "number") return null;
@@ -1525,14 +1958,14 @@ export default function TestResultPage({
             </label>
           </div>
           <div className="grid gap-4">
-            <div className={isLipid ? "rounded-xl border border-gray-200 bg-white p-3" : "rounded-xl border border-gray-200 bg-white p-4"}>
-              <div className={isLipid ? "mb-3 text-base font-semibold text-gray-800" : "mb-4 text-lg font-semibold text-gray-800"}>
-                สรุปผลตรวจ {title} ปี {overviewYear}
+            <div className={isLipid || isKidney ? "rounded-xl border border-gray-200 bg-white p-3" : "rounded-xl border border-gray-200 bg-white p-4"}>
+              <div className={isLipid || isKidney ? "mb-3 text-base font-semibold text-gray-800" : "mb-4 text-lg font-semibold text-gray-800"}>
+                สรุปผลตรวจ {displayTitle} ปี {overviewYear}
               </div>
-                <div className={isLipid ? "mx-auto grid max-w-4xl gap-1.5 sm:grid-cols-2 lg:grid-cols-4" : isLiver ? "mx-auto grid max-w-3xl gap-2 sm:grid-cols-2 md:grid-cols-3" : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
-                  <div className={isLipid || isLiver ? "rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-center" : "rounded-xl border border-emerald-200 bg-emerald-50 p-4"}>
+                <div className={isLipid ? "mx-auto grid max-w-4xl gap-1.5 sm:grid-cols-2 lg:grid-cols-4" : isLiver || isKidney ? "mx-auto grid max-w-3xl gap-2 sm:grid-cols-2 md:grid-cols-3" : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
+                  <div className={isLipid || isLiver || isKidney ? "rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-center" : "rounded-xl border border-emerald-200 bg-emerald-50 p-4"}>
                     <div className="text-xs text-emerald-700">ปกติ</div>
-                    <div className={isLipid || isLiver ? "mt-0.5 text-lg font-semibold text-emerald-900" : "mt-2 text-2xl font-semibold text-emerald-900"}>
+                    <div className={isLipid || isLiver || isKidney ? "mt-0.5 text-lg font-semibold text-emerald-900" : "mt-2 text-2xl font-semibold text-emerald-900"}>
                       {summaryOverview.normal ?? 0}
                     </div>
                   </div>
@@ -1599,6 +2032,21 @@ export default function TestResultPage({
                         </div>
                       </div>
                     </>
+                  ) : isKidney ? (
+                    <>
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-2 text-center">
+                        <div className="text-xs text-red-700 text-center">BUN ผิดปกติ</div>
+                        <div className="mt-0.5 text-lg font-semibold text-red-900">
+                          {summaryOverview.bunAbnormal ?? 0}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-orange-200 bg-orange-50 p-2 text-center">
+                        <div className="text-xs text-orange-700 text-center">Creatinine ผิดปกติ</div>
+                        <div className="mt-0.5 text-lg font-semibold text-orange-900">
+                          {summaryOverview.creatinineAbnormal ?? 0}
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                       <div className="text-xs text-red-700">ผิดปกติ</div>
@@ -1607,15 +2055,15 @@ export default function TestResultPage({
                       </div>
                     </div>
                   )}
-                <div className={isLipid || isLiver ? "rounded-xl border border-gray-200 bg-gray-50 p-2 text-center" : "rounded-xl border border-gray-200 bg-gray-50 p-4"}>
+                <div className={isLipid || isLiver || isKidney ? "rounded-xl border border-gray-200 bg-gray-50 p-2 text-center" : "rounded-xl border border-gray-200 bg-gray-50 p-4"}>
                   <div className="text-xs text-gray-600">ไม่ได้รับการตรวจ</div>
-                  <div className={isLipid ? "mt-0.5 text-lg font-semibold text-gray-900" : "mt-2 text-2xl font-semibold text-gray-900"}>
+                  <div className={isLipid || isKidney ? "mt-0.5 text-lg font-semibold text-gray-900" : "mt-2 text-2xl font-semibold text-gray-900"}>
                     {summaryOverview.notTested ?? 0}
                   </div>
                 </div>
-                <div className={isLipid || isLiver ? "rounded-xl border border-slate-200 bg-slate-50 p-2 text-center" : "rounded-xl border border-slate-200 bg-slate-50 p-4"}>
+                <div className={isLipid || isLiver || isKidney ? "rounded-xl border border-slate-200 bg-slate-50 p-2 text-center" : "rounded-xl border border-slate-200 bg-slate-50 p-4"}>
                   <div className="text-xs text-slate-600">อื่นๆ</div>
-                  <div className={isLipid ? "mt-0.5 text-lg font-semibold text-slate-900" : "mt-2 text-2xl font-semibold text-slate-900"}>
+                  <div className={isLipid || isKidney ? "mt-0.5 text-lg font-semibold text-slate-900" : "mt-2 text-2xl font-semibold text-slate-900"}>
                     {summaryOverview.other ?? 0}
                   </div>
                 </div>
@@ -1625,7 +2073,7 @@ export default function TestResultPage({
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="mb-3 min-h-[56px] text-lg font-semibold leading-tight text-gray-800">
-                  สัดส่วน {title} ตาม Factory
+                  สัดส่วน {displayTitle} ตาม Factory
                 </div>
                 <div className="h-72">
                   {factoryChart.length === 1 ? (
@@ -1639,9 +2087,9 @@ export default function TestResultPage({
                           </Pie>
                           <Tooltip />
                           <Legend
-                            iconSize={isLipid || isLiver ? 10 : 14}
-                            wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
-                            formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
+                            iconSize={isLipid || isLiver || isKidney ? 10 : 14}
+                            wrapperStyle={isLipid || isLiver || isKidney ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                            formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver, isKidney)}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -1660,16 +2108,16 @@ export default function TestResultPage({
                           dataKey="name"
                           interval="preserveStartEnd"
                           minTickGap={isLipid ? 18 : 8}
-                          tick={{ fontSize: isLipid || isLiver ? 10 : 12 }}
-                          height={isLipid || isLiver ? 44 : undefined}
-                          tickFormatter={isLipid || isLiver ? (value) => compactAxisLabel(value, 12) : undefined}
+                          tick={{ fontSize: isLipid || isLiver || isKidney ? 10 : 12 }}
+                          height={isLipid || isLiver || isKidney ? 44 : undefined}
+                          tickFormatter={isLipid || isLiver || isKidney ? (value) => compactAxisLabel(value, 12) : undefined}
                         />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend
-                          iconSize={isLipid || isLiver ? 10 : 14}
-                          wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
-                          formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
+                          iconSize={isLipid || isLiver || isKidney ? 10 : 14}
+                          wrapperStyle={isLipid || isLiver || isKidney ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver, isKidney)}
                         />
                         {categorySeries.map((item) => (
                           <Bar
@@ -1693,7 +2141,7 @@ export default function TestResultPage({
                 <div className="mb-3 min-h-[56px] text-lg font-semibold leading-tight text-gray-800">
                   {overviewDepartment
                     ? overviewDepartment
-                    : `สัดส่วน ${title} ตาม Department`}
+                    : `สัดส่วน ${displayTitle} ตาม Department`}
                 </div>
                 <div className="h-72">
                   {overviewDepartment ? (
@@ -1707,9 +2155,9 @@ export default function TestResultPage({
                           </Pie>
                           <Tooltip />
                           <Legend
-                            iconSize={isLipid || isLiver ? 10 : 14}
-                            wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
-                            formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
+                            iconSize={isLipid || isLiver || isKidney ? 10 : 14}
+                            wrapperStyle={isLipid || isLiver || isKidney ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                            formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver, isKidney)}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -1728,16 +2176,16 @@ export default function TestResultPage({
                           dataKey="name"
                           interval="preserveStartEnd"
                           minTickGap={isLipid ? 18 : 8}
-                          tick={{ fontSize: isLipid || isLiver ? 10 : 12 }}
-                          height={isLipid || isLiver ? 44 : undefined}
-                          tickFormatter={isLipid || isLiver ? (value) => compactAxisLabel(value, 12) : undefined}
+                          tick={{ fontSize: isLipid || isLiver || isKidney ? 10 : 12 }}
+                          height={isLipid || isLiver || isKidney ? 44 : undefined}
+                          tickFormatter={isLipid || isLiver || isKidney ? (value) => compactAxisLabel(value, 12) : undefined}
                         />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend
-                          iconSize={isLipid || isLiver ? 10 : 14}
-                          wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
-                          formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
+                          iconSize={isLipid || isLiver || isKidney ? 10 : 14}
+                          wrapperStyle={isLipid || isLiver || isKidney ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver, isKidney)}
                         />
                         {categorySeries.map((item) => (
                           <Bar
@@ -1761,7 +2209,7 @@ export default function TestResultPage({
                 <div className="mb-3 min-h-[56px] text-lg font-semibold leading-tight text-gray-800">
                   {shouldShowSectionPie && singleSectionName
                       ? singleSectionName
-                    : `สัดส่วน ${title} ตาม Section`}
+                    : `สัดส่วน ${displayTitle} ตาม Section`}
                 </div>
                 <div className="h-72">
                   {shouldShowSectionPie ? (
@@ -1775,9 +2223,9 @@ export default function TestResultPage({
                           </Pie>
                           <Tooltip />
                           <Legend
-                            iconSize={isLipid || isLiver ? 10 : 14}
-                            wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
-                            formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
+                            iconSize={isLipid || isLiver || isKidney ? 10 : 14}
+                            wrapperStyle={isLipid || isLiver || isKidney ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                            formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver, isKidney)}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -1796,16 +2244,16 @@ export default function TestResultPage({
                           dataKey="name"
                           interval="preserveStartEnd"
                           minTickGap={isLipid ? 18 : 8}
-                          tick={{ fontSize: isLipid || isLiver ? 10 : 12 }}
-                          height={isLipid || isLiver ? 44 : undefined}
-                          tickFormatter={isLipid || isLiver ? (value) => compactAxisLabel(value, 12) : undefined}
+                          tick={{ fontSize: isLipid || isLiver || isKidney ? 10 : 12 }}
+                          height={isLipid || isLiver || isKidney ? 44 : undefined}
+                          tickFormatter={isLipid || isLiver || isKidney ? (value) => compactAxisLabel(value, 12) : undefined}
                         />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend
-                          iconSize={isLipid || isLiver ? 10 : 14}
-                          wrapperStyle={isLipid || isLiver ? { fontSize: "11px", lineHeight: "14px" } : undefined}
-                          formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver)}
+                          iconSize={isLipid || isLiver || isKidney ? 10 : 14}
+                          wrapperStyle={isLipid || isLiver || isKidney ? { fontSize: "11px", lineHeight: "14px" } : undefined}
+                          formatter={(value) => legendLabelFormatter(String(value), isLipid, isLiver, isKidney)}
                         />
                         {categorySeries.map((item) => (
                           <Bar

@@ -13,6 +13,7 @@ import {
   LineChart,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -76,18 +77,44 @@ const getVaStatusValue = (value: string) => {
   return null;
 };
 
+const renderTrendDotWithLabel = (cx?: number, cy?: number, isAbnormal?: boolean) => {
+  if (typeof cx !== "number" || typeof cy !== "number") return null;
+  const fill = isAbnormal ? "#DC2626" : "#2563EB";
+  return (
+    <g>
+      <circle
+        cx={cx}
+        cy={cy}
+        r={isAbnormal ? 6 : 4}
+        fill={fill}
+        stroke={isAbnormal ? "#7F1D1D" : "transparent"}
+        strokeWidth={isAbnormal ? 2 : 0}
+      />
+      <text x={cx + 8} y={cy - 8} fontSize={11} fill={fill}>
+        {isAbnormal ? "ผิดปกติ" : "ปกติ"}
+      </text>
+    </g>
+  );
+};
+
 export default function EyesVaReport() {
   const [rowsByYear, setRowsByYear] = useState<Record<string, HealthRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [factoryId, setFactoryId] = useState<1 | 2 | 3 | 4>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
-  const [selectedYear] = useState("2568");
+  const [selectedYear, setSelectedYear] = useState("2568");
   const [resultYear, setResultYear] = useState("2568");
 
   const [overviewFactory, setOverviewFactory] = useState<string>("");
   const [overviewDepartment, setOverviewDepartment] = useState<string>("");
   const [overviewSection, setOverviewSection] = useState<string>("");
+
+  const availableYears = useMemo(() => {
+    return Object.keys(rowsByYear)
+      .filter((year) => (rowsByYear[year] ?? []).length > 0)
+      .sort((a, b) => Number(a) - Number(b));
+  }, [rowsByYear]);
 
   useEffect(() => {
     let active = true;
@@ -157,15 +184,28 @@ export default function EyesVaReport() {
   }, [rowsByYear, selectedEmpId, factoryId]);
 
   useEffect(() => {
+    if (!availableYears.length) return;
+    const latestYear = availableYears[availableYears.length - 1];
+    if (!availableYears.includes(selectedYear)) {
+      setSelectedYear(latestYear);
+    }
+  }, [availableYears, selectedYear]);
+
+  useEffect(() => {
     if (!selectedEmpId) {
-      setResultYear("2568");
+      const latestYear = Object.keys(rowsByYear)
+        .filter((year) => (rowsByYear[year] ?? []).length > 0)
+        .sort((a, b) => Number(a) - Number(b))
+        .at(-1) ?? "2568";
+      setResultYear(latestYear);
       return;
     }
     if (!selectedEmpAvailableYears.length) return;
-    if (!selectedEmpAvailableYears.includes(resultYear)) {
-      setResultYear(selectedEmpAvailableYears[selectedEmpAvailableYears.length - 1]);
+    const latestYear = selectedEmpAvailableYears[selectedEmpAvailableYears.length - 1];
+    if (resultYear !== latestYear) {
+      setResultYear(latestYear);
     }
-  }, [selectedEmpId, selectedEmpAvailableYears, resultYear]);
+  }, [selectedEmpId, selectedEmpAvailableYears, resultYear, rowsByYear]);
 
   const selectedResultRow = useMemo(() => {
     if (!selectedEmpId) return null;
@@ -415,10 +455,10 @@ export default function EyesVaReport() {
                       <div className="text-xs uppercase text-gray-500">Trend by year</div>
                       <div className="mt-3 h-36">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={vaTrend}>
+                          <LineChart data={vaTrend} margin={{ top: 8, right: 36, left: 0, bottom: 0 }}>
                             <XAxis dataKey="year" />
                             <YAxis
-                              domain={[0, 1.2]}
+                              domain={[0, 1.35]}
                               ticks={[0.2, 1]}
                               tickFormatter={(value) => (value >= 1 ? "ผิดปกติ" : "ปกติ")}
                             />
@@ -440,16 +480,7 @@ export default function EyesVaReport() {
                                 const value = typeof raw === "number" ? raw : Number.NaN;
                                 if (!Number.isFinite(value)) return null;
                                 const isผิดปกติ = value >= 1;
-                                return (
-                                  <circle
-                                    cx={cx}
-                                    cy={cy}
-                                    r={isผิดปกติ ? 6 : 4}
-                                    fill={isผิดปกติ ? "#DC2626" : "#2563EB"}
-                                    stroke={isผิดปกติ ? "#7F1D1D" : "transparent"}
-                                    strokeWidth={isผิดปกติ ? 2 : 0}
-                                  />
-                                );
+                                return renderTrendDotWithLabel(cx, cy, isผิดปกติ);
                               }}
                             />
                           </LineChart>
@@ -469,7 +500,21 @@ export default function EyesVaReport() {
           <div className="mb-4 text-lg font-semibold text-gray-800">ภาพรวม</div>
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-lg font-semibold text-gray-800">VA summary by group</div>
+              <div className="text-lg font-semibold text-gray-800">ภาพรวมตรวจวัดสายตา (VA)</div>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                Year
+                <select
+                  className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                  value={selectedYear}
+                  onChange={(event) => setSelectedYear(event.target.value)}
+                >
+                  {availableYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="mb-4 grid gap-3 md:grid-cols-3">
               <label className="flex flex-col gap-2 text-xs text-gray-600">

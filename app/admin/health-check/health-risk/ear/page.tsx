@@ -14,6 +14,7 @@ import {
   Cell,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -133,8 +134,9 @@ export default function EyesReport() {
       setSelectedYear("");
       return;
     }
-    if (!availableYears.includes(selectedYear)) {
-      setSelectedYear(availableYears[availableYears.length - 1]);
+    const latestYear = availableYears[availableYears.length - 1];
+    if (!selectedYear || !availableYears.includes(selectedYear)) {
+      setSelectedYear(latestYear);
     }
   }, [availableYears, selectedYear]);
 
@@ -224,7 +226,7 @@ export default function EyesReport() {
         return {
           year,
           ปกติ: status === "ปกติ" ? 1 : null,
-          ผิดปกติ: status === "ผิดปกติ" ? 1 : null,
+          ผิดปกติ: status === "ผิดปกติ" ? 0 : null,
         };
       });
       return { label: category.label, data };
@@ -247,6 +249,23 @@ export default function EyesReport() {
           stroke={isHigh ? "#7F1D1D" : "transparent"}
           strokeWidth={isHigh ? 2 : 0}
         />
+      );
+    };
+  };
+
+  const makeTrendStatusDot = (label: string, fill: string) => {
+    return (props: any): React.ReactNode => {
+      const { cx, cy, payload, dataKey } = props;
+      const raw = payload && dataKey ? payload[dataKey] : null;
+      const value = Number(raw ?? NaN);
+      if (!Number.isFinite(value) || typeof cx !== "number" || typeof cy !== "number") return null;
+      return (
+        <g>
+          <circle cx={cx} cy={cy} r={5} fill={fill} stroke="#FFFFFF" strokeWidth={2} />
+          <text x={cx + 6} y={cy - 6} fontSize={9} fill={fill}>
+            {label}
+          </text>
+        </g>
       );
     };
   };
@@ -464,7 +483,7 @@ export default function EyesReport() {
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="text-lg font-semibold text-gray-800">
-                    Hearing Results {selectedYear ? `(${selectedYear})` : ""}
+                    ตรวจการได้ยิน {selectedYear ? `(${selectedYear})` : ""}
                   </div>
                   <label className="flex items-center gap-2 text-xs text-gray-600">
                     Year
@@ -500,7 +519,7 @@ export default function EyesReport() {
                                   style={{ fontSize: 10, fill: "#6B7280" }}
                                 />
                               </XAxis>
-                              <YAxis domain={[0, 40]} />
+                              <YAxis domain={[0, 45]} />
                               <Tooltip />
                               <Legend />
                               <Line
@@ -560,7 +579,7 @@ export default function EyesReport() {
                                   style={{ fontSize: 10, fill: "#6B7280" }}
                                 />
                               </XAxis>
-                              <YAxis domain={[0, 40]} />
+                              <YAxis domain={[0, 45]} />
                               <Tooltip />
                               <Legend />
                               <Line
@@ -613,14 +632,22 @@ export default function EyesReport() {
                         <div className="text-xs uppercase text-gray-500">{chart.label}</div>
                         <div className="mt-3 h-40">
                           <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={chart.data}>
-                              <XAxis dataKey="year" />
+                            <LineChart data={chart.data} margin={{ top: 8, right: 36, left: 0, bottom: 0 }}>
+                              <XAxis dataKey="year" padding={{ left: 25, right: 25 }} />
                               <YAxis
                                 allowDecimals={false}
                                 ticks={[0, 1]}
-                                domain={[0, 1]}
+                                domain={[-0.1, 1.15]}
+                                tickFormatter={(value) => (Number(value) >= 1 ? "ปกติ" : Number(value) <= 0 ? "ผิดปกติ" : "")}
+                                tick={{ fontSize: 10 }}
                               />
-                              <Tooltip />
+                              <Tooltip
+                                formatter={(value, name) => {
+                                  const numeric = typeof value === "number" ? value : Number(value ?? NaN);
+                                  if (!Number.isFinite(numeric)) return null;
+                                  return [name, "สถานะ"];
+                                }}
+                              />
                               <Legend />
                               <Line
                                 type="monotone"
@@ -628,6 +655,7 @@ export default function EyesReport() {
                                 name="ปกติ"
                                 stroke="#16A34A"
                                 strokeWidth={2}
+                                dot={makeTrendStatusDot("ปกติ", "#16A34A")}
                               />
                               <Line
                                 type="monotone"
@@ -635,6 +663,7 @@ export default function EyesReport() {
                                 name="ผิดปกติ"
                                 stroke="#DC2626"
                                 strokeWidth={2}
+                                dot={makeTrendStatusDot("ผิดปกติ", "#DC2626")}
                               />
                             </LineChart>
                           </ResponsiveContainer>
@@ -657,8 +686,22 @@ export default function EyesReport() {
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-lg font-semibold text-gray-800">
-                Hearing summary by group
+                ภาพรวมการตรวจการได้ยิน
               </div>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                Year
+                <select
+                  className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                  value={selectedYear}
+                  onChange={(event) => setSelectedYear(event.target.value)}
+                >
+                  {availableYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="mb-4 grid gap-3 md:grid-cols-3">
               <label className="flex flex-col gap-2 text-xs text-gray-600">
