@@ -100,7 +100,7 @@ export default function EyesReport() {
   const [error, setError] = useState<string | null>(null);
   const [factoryId, setFactoryId] = useState<1 | 2 | 3 | 4>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
-  const [selectedYear, setSelectedYear] = useState("2568");
+  const [selectedYear, setSelectedYear] = useState("");
   const [overviewFactory, setOverviewFactory] = useState<string>("");
   const [overviewDepartment, setOverviewDepartment] = useState<string>("");
   const [overviewSection, setOverviewSection] = useState<string>("");

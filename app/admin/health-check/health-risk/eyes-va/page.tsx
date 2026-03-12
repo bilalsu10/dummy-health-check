@@ -103,8 +103,8 @@ export default function EyesVaReport() {
   const [error, setError] = useState<string | null>(null);
   const [factoryId, setFactoryId] = useState<1 | 2 | 3 | 4>(1);
   const [selectedEmpId, setSelectedEmpId] = useState("");
-  const [selectedYear, setSelectedYear] = useState("2568");
-  const [resultYear, setResultYear] = useState("2568");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [resultYear, setResultYear] = useState("");
 
   const [overviewFactory, setOverviewFactory] = useState<string>("");
   const [overviewDepartment, setOverviewDepartment] = useState<string>("");
@@ -197,12 +197,14 @@ export default function EyesVaReport() {
         .filter((year) => (rowsByYear[year] ?? []).length > 0)
         .sort((a, b) => Number(a) - Number(b))
         .at(-1) ?? "2568";
-      setResultYear(latestYear);
+      if (!resultYear || !Object.keys(rowsByYear).includes(resultYear)) {
+        setResultYear(latestYear);
+      }
       return;
     }
     if (!selectedEmpAvailableYears.length) return;
     const latestYear = selectedEmpAvailableYears[selectedEmpAvailableYears.length - 1];
-    if (resultYear !== latestYear) {
+    if (!selectedEmpAvailableYears.includes(resultYear)) {
       setResultYear(latestYear);
     }
   }, [selectedEmpId, selectedEmpAvailableYears, resultYear, rowsByYear]);

@@ -55,16 +55,15 @@ const TEST_DISPLAY_LABELS: Record<string, string> = {
   "Urine Methyl Ethyl Ketone": "ตรวจสารเมทิล เอทิล คีโตนในปัสสาวะ (Methyl Ethyl Ketone in Urine)",
   "Urine Phenol": "ตรวจสารฟีนอลในปัสสาวะ (Phenol in Urine)",
 };
-
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
 const getRowYear = (row: HealthRow) =>
   normalizeValue(row.Year ?? row.year ?? row["ปี"] ?? row["year"]);
 const getInitial = (value: string) => value.replace(/\s+/g, "").slice(0, 1);
 
 const NUMERIC_THRESHOLDS: Record<string, number> = {
-  "Blood Lead": 200,
+  "Blood Lead": 20,
   "Blood Cadmium": 5,
-  "Urine Arsenic": 35,
+  "Urine Arsenic": 100,
   "Urine Toluene": 1.6,
   "Urine Acetone": 25,
   "Urine Xylene": 1.5,
@@ -252,6 +251,13 @@ const integerTick = (value: unknown) => {
   return String(Math.round(n));
 };
 
+const decimalTick = (value: unknown) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return n.toFixed(2);
+};
+
+
 const categorizeNormalAbnormal = (value: string, testKey: string, sexValue?: unknown) => {
   if (isNotTested(value)) return "notTested";
   if (testKey === "Blood Pressure") {
@@ -322,6 +328,15 @@ const categorizeNormalAbnormal = (value: string, testKey: string, sexValue?: unk
     if (summaryText.includes("ผิดปกติ")) return "bunAbnormal";
     if (summaryText.includes("ปกติ")) return "normal";
     return "other";
+  }
+  if (testKey === "Urine Mercury") {
+    if (
+      value.includes("ผลการตรวจสารปรอท อยู่ในเกณฑ์ปกติ") ||
+      value.includes("ผลการตรวจสาร Mercury อยู่ในเกณฑ์ปกติ") ||
+      value.includes("ไม่เกินค่าอ้างอิง")
+    ) {
+      return "normal";
+    }
   }
   const threshold = NUMERIC_THRESHOLDS[testKey];
   if (threshold !== undefined) {
@@ -471,6 +486,7 @@ const categoryLabelFromValue = (value: string, bucket: string, testKey?: string)
   if (bucket === "creatinineAbnormal") return "Creatinine ผิดปกติ";
   return categoryLabel(bucket);
 };
+
 
 const legendLabelFormatter = (value: string, isLipid: boolean, isLiver: boolean, isKidney: boolean) => {
   if (isLipid) {
@@ -680,6 +696,36 @@ export default function TestResultPage({
   const isLipid = testKey === "Lipid Profile";
   const isLiver = testKey === "Liver Function";
   const isKidney = testKey === "Kidney Function";
+  const isArsenicTest =
+    testKey.toLowerCase().includes("arsenic") ||
+    fallbackKeys.some((key) => key.toLowerCase().includes("arsenic") || key.includes("สารหนู"));
+  const isAcetoneTest =
+    testKey.toLowerCase().includes("acetone") ||
+    fallbackKeys.some((key) => key.toLowerCase().includes("acetone") || key.includes("อะซิโตน"));
+  const isMercuryTest =
+    testKey.toLowerCase().includes("mercury") ||
+    fallbackKeys.some((key) => key.toLowerCase().includes("mercury") || key.includes("ปรอท"));
+  const isTolueneTest =
+    testKey.toLowerCase().includes("toluene") ||
+    fallbackKeys.some((key) => key.toLowerCase().includes("toluene") || key.includes("โทลูอีน"));
+  const isXyleneTest =
+    testKey.toLowerCase().includes("xylene") ||
+    fallbackKeys.some((key) => key.toLowerCase().includes("xylene") || key.includes("ไซลีน"));
+  const isMethylEthylKetoneTest =
+    testKey.toLowerCase().includes("methyl ethyl ketone") ||
+    fallbackKeys.some(
+      (key) => key.toLowerCase().includes("methyl ethyl ketone") || key.includes("เมทิล เอทิล คีโตน"),
+    );
+  const isPhenolTest =
+    testKey.toLowerCase().includes("phenol") ||
+    fallbackKeys.some((key) => key.toLowerCase().includes("phenol") || key.includes("ฟีนอล"));
+  const isLeadTest =
+    testKey.toLowerCase().includes("lead") ||
+    fallbackKeys.some((key) => key.toLowerCase().includes("lead") || key.includes("สารตะกั่ว"));
+  const isCadmiumTest =
+    testKey.toLowerCase().includes("cadmium") ||
+    fallbackKeys.some((key) => key.toLowerCase().includes("cadmium") || key.includes("แคดเมียม"));
+  const isHighlightedToxicTest = isArsenicTest || isAcetoneTest;
   const showPieSliceLabel = !isLipid;
   const categorySeries = isBloodPressure
     ? [
@@ -739,6 +785,8 @@ export default function TestResultPage({
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState("");
   const [overviewYear, setOverviewYear] = useState("");
+  const [selectedYearTouched, setSelectedYearTouched] = useState(false);
+  const [overviewYearTouched, setOverviewYearTouched] = useState(false);
   const [overviewFactory, setOverviewFactory] = useState("");
   const [overviewDepartment, setOverviewDepartment] = useState("");
   const [overviewSection, setOverviewSection] = useState("");
@@ -802,6 +850,7 @@ export default function TestResultPage({
 
   useEffect(() => {
     setSelectedEmpId("");
+    setSelectedYearTouched(false);
   }, [factoryId]);
 
   useEffect(() => {
@@ -810,7 +859,7 @@ export default function TestResultPage({
     setOverviewSection("");
     setOverviewDepartmentSearch("");
     setOverviewSectionSearch("");
-  }, [factoryId, overviewYear]);
+  }, [overviewYear]);
 
   useEffect(() => {
     setOverviewDepartment("");
@@ -827,22 +876,40 @@ export default function TestResultPage({
   useEffect(() => {
     if (!availableYears.length) {
       setSelectedYear("");
-      setOverviewYear("");
       return;
     }
 
     const latestYear = availableYears[availableYears.length - 1] ?? "";
-    if (!availableYears.includes(selectedYear)) {
+    if (!selectedYearTouched || !availableYears.includes(selectedYear)) {
       setSelectedYear(latestYear);
     }
-    if (!availableYears.includes(overviewYear)) {
-      setOverviewYear(latestYear);
-    }
-  }, [availableYears, selectedYear, overviewYear]);
+  }, [availableYears, selectedYear, selectedYearTouched]);
 
   
 
   const individualYears = availableYears;
+
+  const overviewAvailableYears = useMemo(() => {
+    const years = Object.keys(overviewRowsByYear).sort((a, b) => Number(a) - Number(b));
+    return years.filter((year) =>
+      (overviewRowsByYear[year] ?? []).some((row) => {
+        if (overviewFactory && !matchesFactory(row, Number(overviewFactory))) return false;
+        const raw = normalizeValue(getTestRawValue(row, testKey, fallbackKeys));
+        return raw !== "" && raw !== "-" && raw.toLowerCase() !== "null";
+      }),
+    );
+  }, [overviewRowsByYear, overviewFactory, testKey, fallbackKeys]);
+
+  useEffect(() => {
+    if (!overviewAvailableYears.length) {
+      setOverviewYear("");
+      return;
+    }
+    const latestYear = overviewAvailableYears[overviewAvailableYears.length - 1] ?? "";
+    if (!overviewYearTouched || !overviewAvailableYears.includes(overviewYear)) {
+      setOverviewYear(latestYear);
+    }
+  }, [overviewAvailableYears, overviewYear, overviewYearTouched]);
 
   const people = useMemo(() => {
     const merged = new Map<string, { empId: string; name: string; department: string; section: string }>();
@@ -863,6 +930,46 @@ export default function TestResultPage({
     return Array.from(merged.values());
   }, [rowsByYear, individualYears]);
 
+  const highlightedAbnormalEmpIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!isHighlightedToxicTest) return set;
+    individualYears.forEach((year) => {
+      (rowsByYear[year] ?? []).forEach((row) => {
+        const empId = normalizeValue(row.SCG_EmpID);
+        if (!empId) return;
+        const raw = getTestRawValue(row, testKey, fallbackKeys);
+        const bucket = categorizeNormalAbnormal(raw, testKey, row.Sex);
+        const isAbnormalBucket = bucket !== "normal" && bucket !== "notTested" && bucket !== "other";
+        if (isAbnormalBucket) {
+          set.add(empId);
+        }
+      });
+    });
+    return set;
+  }, [isHighlightedToxicTest, individualYears, rowsByYear, testKey, fallbackKeys]);
+
+  const phenolThreeYearEmpIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!isPhenolTest) return set;
+    const yearsByEmp = new Map<string, Set<string>>();
+    individualYears.forEach((year) => {
+      (rowsByYear[year] ?? []).forEach((row) => {
+        const empId = normalizeValue(row.SCG_EmpID);
+        if (!empId) return;
+        const raw = normalizeValue(getTestRawValue(row, testKey, fallbackKeys));
+        const hasMeaningfulValue =
+          raw !== "" && raw !== "-" && raw.toLowerCase() !== "null" && !isNotTested(raw);
+        if (!hasMeaningfulValue) return;
+        if (!yearsByEmp.has(empId)) yearsByEmp.set(empId, new Set<string>());
+        yearsByEmp.get(empId)!.add(year);
+      });
+    });
+    yearsByEmp.forEach((years, empId) => {
+      if (years.size >= 3) set.add(empId);
+    });
+    return set;
+  }, [isPhenolTest, individualYears, rowsByYear, testKey, fallbackKeys]);
+
   const selectedEmpAvailableYears = useMemo(() => {
     if (!selectedEmpId) return individualYears;
     return individualYears.filter((year) =>
@@ -881,10 +988,10 @@ export default function TestResultPage({
   useEffect(() => {
     if (!selectedEmpId || !selectedEmpAvailableYears.length) return;
     const latestYear = selectedEmpAvailableYears[selectedEmpAvailableYears.length - 1];
-    if (selectedYear !== latestYear) {
+    if (!selectedYearTouched || !selectedEmpAvailableYears.includes(selectedYear)) {
       setSelectedYear(latestYear);
     }
-  }, [selectedEmpId, selectedEmpAvailableYears, selectedYear]);
+  }, [selectedEmpId, selectedEmpAvailableYears, selectedYear, selectedYearTouched]);
 
   const selectedResult = useMemo(() => {
     if (!selectedEmpId) return null;
@@ -911,7 +1018,6 @@ export default function TestResultPage({
   const bpValues = selectedResult ? parseBloodPressureValues(selectedResult.raw) : null;
   const bpSysValue = bpValues?.sys ?? "-";
   const bpDiaValue = bpValues?.dia ?? "-";
-
   const trend = useMemo(() => {
     if (!selectedEmpId) return [];
     return individualYears.map((year) => {
@@ -920,7 +1026,15 @@ export default function TestResultPage({
         null;
       const raw = getTestRawValue(row ?? null, testKey, fallbackKeys);
       const bucket = categorizeNormalAbnormal(raw, testKey, selectedPerson?.Sex);
-      const value = trendValue(raw, testKey);
+      const rawNumeric = parseNumeric(raw);
+      const useRawNumericTrend =
+        !isBloodPressure &&
+        !isLipid &&
+        !isLiver &&
+        !isKidney &&
+        raw.includes(",") &&
+        rawNumeric !== null;
+      const value = useRawNumericTrend ? rawNumeric : trendValue(raw, testKey);
       return {
         year,
         raw,
@@ -930,7 +1044,7 @@ export default function TestResultPage({
         abnormalValue: bucket === "abnormal" ? value : null,
       };
     });
-  }, [rowsByYear, selectedEmpId, testKey, fallbackKeys, individualYears]);
+  }, [rowsByYear, selectedEmpId, testKey, fallbackKeys, individualYears, isBloodPressure, isLipid, isLiver, isKidney, selectedPerson?.Sex]);
 
   const lipidTrend = useMemo(() => {
     if (!isLipid || !selectedEmpId) return null;
@@ -1134,7 +1248,60 @@ export default function TestResultPage({
     [summaryDepartmentOverview, categorySeries],
   );
 
-  const isNumericTrend = testKey === "Blood Glucose" || testKey === "BMI";
+  const isNumericTrend =
+    testKey === "Blood Glucose" ||
+    testKey === "BMI" ||
+    (!isBloodPressure &&
+      !isLipid &&
+      !isLiver &&
+      !isKidney &&
+      trend.some((point) => {
+        const raw = String(point.raw ?? "");
+        return raw.includes(",") && parseNumeric(raw) !== null;
+      }));
+
+  const numericReferenceValues = useMemo(() => {
+    if (testKey === "BMI") return [18.5, 22.99];
+    if (testKey === "Blood Glucose") return [70, 99];
+    if (isArsenicTest) return [100];
+    if (isAcetoneTest) return [25];
+    if (isMercuryTest) return [20];
+    if (isTolueneTest) return [0.03];
+    if (isXyleneTest) return [0.3];
+    if (isMethylEthylKetoneTest) return [2];
+    if (isPhenolTest) return [250];
+    if (isLeadTest) return [20];
+    if (isCadmiumTest) return [5];
+    return [];
+  }, [testKey, isArsenicTest, isAcetoneTest, isMercuryTest, isTolueneTest, isXyleneTest, isMethylEthylKetoneTest, isPhenolTest, isLeadTest, isCadmiumTest]);
+
+  const tolueneTrendDomain = useMemo<[number, number] | undefined>(() => {
+    if (!isTolueneTest) return undefined;
+    const values = toNumericValues(trend.map((p) => p.value));
+    const all = [...values, 0.03].filter((v) => Number.isFinite(v));
+    if (!all.length) return [0, 0.04];
+    const min = Math.min(...all);
+    const max = Math.max(...all);
+    const span = Math.max(max - min, 0.02);
+    const pad = span * 0.2;
+    const lower = Math.max(0, min - pad);
+    const upper = max + pad;
+    return [lower, upper];
+  }, [isTolueneTest, trend]);
+
+  const xyleneTrendDomain = useMemo<[number, number] | undefined>(() => {
+    if (!isXyleneTest) return undefined;
+    const values = toNumericValues(trend.map((p) => p.value));
+    const all = [...values, 0.3].filter((v) => Number.isFinite(v));
+    if (!all.length) return [0, 0.36];
+    const min = Math.min(...all);
+    const max = Math.max(...all);
+    const span = Math.max(max - min, 0.12);
+    const pad = span * 0.2;
+    const lower = Math.max(0, min - pad);
+    const upper = max + pad;
+    return [lower, upper];
+  }, [isXyleneTest, trend]);
 
   const buildGroupChart = (
     groupKey: "Factory" | "Department" | "Section",
@@ -1238,7 +1405,24 @@ export default function TestResultPage({
               >
                 <option value="">เลือกพนักงาน</option>
                 {people.map((person) => (
-                  <option key={person.empId} value={person.empId}>
+                  <option
+                    key={person.empId}
+                    value={person.empId}
+                    className={
+                      isHighlightedToxicTest && highlightedAbnormalEmpIds.has(person.empId)
+                        ? "text-red-700 font-semibold"
+                        : isPhenolTest && phenolThreeYearEmpIds.has(person.empId)
+                          ? "text-blue-700 font-semibold"
+                        : undefined
+                    }
+                    style={
+                      isHighlightedToxicTest && highlightedAbnormalEmpIds.has(person.empId)
+                        ? { color: "#B91C1C", fontWeight: 600 }
+                        : isPhenolTest && phenolThreeYearEmpIds.has(person.empId)
+                          ? { color: "#1D4ED8", fontWeight: 600 }
+                        : undefined
+                    }
+                  >
                     {person.empId} - {person.name || "ไม่ทราบชื่อ"}
                   </option>
                 ))}
@@ -1286,7 +1470,10 @@ export default function TestResultPage({
                     <select
                       className="h-9 rounded-lg border border-gray-300 bg-white px-2 text-sm text-gray-900"
                       value={selectedYear}
-                      onChange={(event) => setSelectedYear(event.target.value)}
+                      onChange={(event) => {
+                        setSelectedYearTouched(true);
+                        setSelectedYear(event.target.value);
+                      }}
                     >
                       {selectedEmpAvailableYears.map((year) => (
                         <option key={year} value={year}>
@@ -1778,12 +1965,18 @@ export default function TestResultPage({
                         <XAxis dataKey="year" padding={{ left: 48, right: 48 }} />
                         {isNumericTrend ? (
                             <YAxis
-                              allowDecimals={false}
-                              tickFormatter={integerTick}
-                              domain={getPaddedDomain(
-                                toNumericValues(trend.map((p) => p.value)),
-                                testKey === "BMI" ? [18.5, 22.99] : testKey === "Blood Glucose" ? [70, 99] : [],
-                              )}
+                              allowDecimals={isTolueneTest || isXyleneTest}
+                              tickFormatter={isTolueneTest || isXyleneTest ? decimalTick : integerTick}
+                              domain={
+                                isTolueneTest
+                                  ? tolueneTrendDomain
+                                  : isXyleneTest
+                                    ? xyleneTrendDomain
+                                  : getPaddedDomain(
+                                      toNumericValues(trend.map((p) => p.value)),
+                                      numericReferenceValues,
+                                    )
+                              }
                             />
                         ) : (
                           <YAxis
@@ -1795,17 +1988,16 @@ export default function TestResultPage({
                             }}
                           />
                         )}
-                        {isNumericTrend && testKey === "BMI" ? (
-                          <>
-                            <ReferenceLine y={18.5} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("18.5")} />
-                            <ReferenceLine y={22.99} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("22.99")} />
-                          </>
-                        ) : isNumericTrend && testKey === "Blood Glucose" ? (
-                          <>
-                            <ReferenceLine y={70} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("70")} />
-                            <ReferenceLine y={99} {...REFERENCE_LINE_STYLE} label={referenceLineLabel("99")} />
-                          </>
-                        ) : null}
+                        {isNumericTrend
+                          ? numericReferenceValues.map((value) => (
+                              <ReferenceLine
+                                key={`ref-${testKey}-${value}`}
+                                y={value}
+                                {...REFERENCE_LINE_STYLE}
+                                label={referenceLineLabel(String(value))}
+                              />
+                            ))
+                          : null}
                         <Tooltip content={<TrendTooltip testKey={testKey} />} />
                         <Line
                           type="monotone"
@@ -1883,9 +2075,12 @@ export default function TestResultPage({
               <select
                 className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
                 value={overviewYear}
-                onChange={(event) => setOverviewYear(event.target.value)}
+                onChange={(event) => {
+                  setOverviewYearTouched(true);
+                  setOverviewYear(event.target.value);
+                }}
               >
-                {individualYears.map((year) => (
+                {overviewAvailableYears.map((year) => (
                   <option key={year} value={year}>
                     {year}
                   </option>
