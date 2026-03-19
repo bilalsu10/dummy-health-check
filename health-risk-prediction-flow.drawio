@@ -1,0 +1,113 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36" version="29.6.1">
+  <diagram name="Health Risk Prediction" id="5MYQ1DrXLPfmkt6TJguU">
+    <mxGraphModel dx="1082" dy="1222" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#43a047;fontStyle=1;" value="เริ่ม" vertex="1">
+          <mxGeometry height="60" width="140" x="660" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1e88e5;" value="คำนวณ 3 ค่า&lt;br&gt;1. คะแนนรวมถ่วงน้ำหนัก&lt;br&gt;2. คะแนนความรุนแรงสูงสุด&lt;br&gt;3. จำนวนระบบสำคัญที่ผิดปกติ (ความดัน น้ำตาล ไต ตับ ไขมันในเลือด)&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="110" width="420" x="520" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-3" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#fb8c00;fontStyle=1;" value="คะแนนความรุนแรงสูงสุด &gt;= 3 ?" vertex="1">
+          <mxGeometry height="110" width="280" x="590" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#e53935;fontColor=#b71c1c;" value="แสดงข้อความคาดการณ์&#xa;หากไม่เข้ารับการดูแลทันที&#xa;อาจเกิดภาวะแทรกซ้อนรุนแรง เช่น โรคหัวใจ หลอดเลือด&#xa;หรือการเสื่อมของอวัยวะสำคัญ" vertex="1">
+          <mxGeometry height="140" width="420" x="980" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-5" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#fb8c00;fontStyle=1;" value="จำนวนระบบสำคัญที่ผิดปกติ &gt;= 2 ?" vertex="1">
+          <mxGeometry height="120" width="340" x="560" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-6" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#fb8c00;fontStyle=1;" value="คะแนนรวมถ่วงน้ำหนัก &gt;= 4.5 ?" vertex="1">
+          <mxGeometry height="120" width="300" x="980" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f9a825;fontColor=#795548;" value="แสดงข้อความคาดการณ์&#xa;หากไม่ติดตามรักษาอย่างต่อเนื่อง&#xa;มีโอกาสเพิ่มความเสี่ยงโรคเรื้อรังและภาวะแทรกซ้อนของระบบเมตาบอลิก" vertex="1">
+          <mxGeometry height="120" width="420" x="980" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-8" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#fb8c00;fontStyle=1;" value="คะแนนรวมถ่วงน้ำหนัก &gt;= 6.5 ?" vertex="1">
+          <mxGeometry height="120" width="300" x="520" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-9" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#fb8c00;fontStyle=1;" value="คะแนนรวมถ่วงน้ำหนัก &gt;= 3.0 ?" vertex="1">
+          <mxGeometry height="120" width="300" x="520" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-10" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#fb8c00;fontStyle=1;" value="คะแนนรวมถ่วงน้ำหนัก &gt; 0 ?" vertex="1">
+          <mxGeometry height="120" width="300" x="520" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f8e9;strokeColor=#7cb342;fontColor=#33691e;" value="แสดงข้อความคาดการณ์&#xa;หากไม่ปรับพฤติกรรมและติดตามผล&#xa;อาจพัฒนาไปสู่ภาวะเสี่ยงโรคเรื้อรังในระยะถัดไป" vertex="1">
+          <mxGeometry height="110" width="420" x="980" y="960" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#43a047;fontColor=#1b5e20;" value="แสดงข้อความคาดการณ์&#xa;ความเสี่ยงรวมอยู่ในระดับต่ำ&#xa;หากดูแลสุขภาพต่อเนื่องตามปกติ" vertex="1">
+          <mxGeometry height="100" width="420" x="980" y="1120" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-13" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-14" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-15" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-4" value="ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-16" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-5" value="ไม่ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-17" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-6" value="ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-18" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-4" value="ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-19" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-7" value="ไม่ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-20" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-8" value="ไม่ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-21" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-9" value="ไม่ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-22" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-7" value="ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-23" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-10" value="ไม่ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-24" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" target="-wSuSDXtxz7GjyTQYGfM-11" value="ใช่">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-25" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" value="ใช่">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="680" />
+              <mxPoint x="920" y="340" />
+            </Array>
+            <mxPoint x="820" y="680" as="sourcePoint" />
+            <mxPoint x="970" y="340.04761904761904" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-26" edge="1" parent="1" source="-wSuSDXtxz7GjyTQYGfM-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" target="-wSuSDXtxz7GjyTQYGfM-12" value="ใช่">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="940" y="1070" />
+              <mxPoint x="940" y="1110" />
+              <mxPoint x="980" y="1110" />
+            </Array>
+            <mxPoint x="1020" y="1215" as="sourcePoint" />
+            <mxPoint x="1180" y="1190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-27" connectable="0" parent="-wSuSDXtxz7GjyTQYGfM-26" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Text" vertex="1">
+          <mxGeometry relative="1" x="0.0409" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-wSuSDXtxz7GjyTQYGfM-28" connectable="0" parent="-wSuSDXtxz7GjyTQYGfM-26" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ไม่ใช่&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.0581" y="-2" as="geometry">
+            <mxPoint x="-4" y="2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
